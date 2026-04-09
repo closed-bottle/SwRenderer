@@ -8,6 +8,8 @@
 
 #include "TGAImage.h"
 
+#include <cstring>
+
 void TGA_Image::FlipVertically()
 {
 	std::reverse(std::begin(data_), std::end(data_));

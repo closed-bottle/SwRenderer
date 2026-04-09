@@ -3,7 +3,7 @@
 #include <fstream>
 #include <cassert>
 #include "OBJGeometry.h"
-#include "../Line_Algorithm/LineRasterizeAlgorithm.h"
+#include "../lineAlgorithm/LineRasterizeAlgorithm.h"
 
 void OBJ_Geometry::SetWidth(float _new_width)
 {

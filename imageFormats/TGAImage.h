@@ -1,13 +1,9 @@
-// filename : TGAImage.h
-// author   : Jaejun Jang
-// email    : jjj404001@gmail.com
-// brief    : Image file structure for TGA image format.
-
 // TGA format details reference:
 // http://tfc.duke.free.fr/coding/tga_specs.pdf
 #pragma once
 
 #include <vector>
+#include <fstream>
 #include "Color.h"
 #include "../Math/Vector.h"
 

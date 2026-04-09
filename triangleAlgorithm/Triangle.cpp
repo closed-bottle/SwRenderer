@@ -1,6 +1,6 @@
 #include <algorithm>
 #include "Triangle.h"
-#include "../Line_Algorithm/LineRasterizeAlgorithm.h"
+#include "../lineAlgorithm/LineRasterizeAlgorithm.h"
 
 void Triangle::IdentifyTopMiddleBottom(Vec2i const & _a, Vec2i const & _b, Vec2i const & _c)
 {

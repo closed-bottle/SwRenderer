@@ -1,10 +1,8 @@
 #pragma pack(push,1) // for tight pack for struct.
-#include "../ImageFormats/TGAImage.h"
-#include "../Line_Algorithm/LineRasterizeAlgorithm.h"
-#include "../Triangle_Algorithm/Triangle.h"
-#include "../GeometryFormats/OBJGeometry.h"
+#include "imageFormats/TGAImage.h"
+#include "geometryFormats/OBJGeometry.h"
 #include <string>
-int main(int argc, const char* argv)
+int main(int argc, const char* argv[])
 {
 	TGA_Image image(3000, 2000, 3);
 

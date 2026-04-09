@@ -5,9 +5,9 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "../Math/Vector.h"
-#include "../Line_Algorithm/Line.h"
-#include "../ImageFormats/TGAImage.h"
+#include "../math/Vector.h"
+#include "../lineAlgorithm/Line.h"
+#include "../imageFormats/TGAImage.h"
 class OBJ_Geometry
 {
 	// Reference : http://paulbourke.net/dataformats/obj/
