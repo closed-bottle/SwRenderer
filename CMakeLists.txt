@@ -10,7 +10,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 add_subdirectory(geometryFormats)
-add_subdirectory(imageFormats)
+add_subdirectory(fileFormats)
 add_subdirectory(lineAlgorithm)
 add_subdirectory(math)
 add_subdirectory(triangleAlgorithm)

@@ -2,12 +2,12 @@
 // http://tfc.duke.free.fr/coding/tga_specs.pdf
 #pragma once
 
-#include <vector>
 #include <fstream>
+#include <vector>
 #include "Color.h"
 #include "../Math/Vector.h"
 
-class TGAImage
+class TGA
 {
     // header : 
     // ID Length 1 byte
@@ -65,9 +65,9 @@ class TGAImage
 	std::vector<Color> data_;
 
 public:
-	TGAImage(std::string _filename);
-	TGAImage(int _width, int _height, int _byte_per_pixel);
-	~TGAImage();
+	TGA(std::string _filename);
+	TGA(int _width, int _height, int _byte_per_pixel);
+	~TGA();
 	bool LoadFromTGAFile(std::string _filename);
 	bool SaveToTGAFile(std::string _filename, bool is_compress);
 	Color GetPixel(unsigned int _x_coord, unsigned int _y_coord);

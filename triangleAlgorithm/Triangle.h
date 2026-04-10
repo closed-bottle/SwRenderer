@@ -1,6 +1,6 @@
 #pragma once
 #include "../Math/Vector.h"
-#include "../ImageFormats/TGAImage.h"
+#include "../fileFormats/TGA.h"
 
 
 class Triangle
@@ -38,6 +38,6 @@ public:
 	void SetNormal(Vec3f& _normal);
 	void SetNormal(Vec3f _normal);
 
-	static void TriangleRasterize(TGAImage& _image, Triangle& _triangle, Color& _color);
-	static void TriangleOutlineRasterize(TGAImage& _image, Triangle& _triangle, Color& _color);
+	static void TriangleRasterize(TGA& _image, Triangle& _triangle, Color& _color);
+	static void TriangleOutlineRasterize(TGA& _image, Triangle& _triangle, Color& _color);
 };

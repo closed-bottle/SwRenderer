@@ -1,5 +1,5 @@
 #pragma once
-#include "../ImageFormats/TGAImage.h"
+#include "../fileFormats/TGA.h"
 #include "Line.h"
 
 namespace Bresenhams
@@ -31,6 +31,6 @@ namespace Bresenhams
 
 		int num_of_pixel = 0;
 	};
-	void LineRasterize(TGAImage& _target, const Vec2i& _start, const Vec2i& _end, const Color& _color);
-	void LineRasterize(TGAImage& _target, ::Line _line, const Color& _color);
+	void LineRasterize(TGA& _target, const Vec2i& _start, const Vec2i& _end, const Color& _color);
+	void LineRasterize(TGA& _target, ::Line _line, const Color& _color);
 }

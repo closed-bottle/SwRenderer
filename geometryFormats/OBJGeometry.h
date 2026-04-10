@@ -4,7 +4,7 @@
 #include "../math/Vector.h"
 #include "../lineAlgorithm/Line.h"
 #include "../triangleAlgorithm/Triangle.h"
-#include "../imageFormats/TGAImage.h"
+#include "../fileFormats/TGA.h"
 
 class OBJGeometry
 {
@@ -85,9 +85,9 @@ public:
 	void SetZoom(float _new_zoom);
 	
 	bool LoadFromOBJFile(std::string _filename);
-	bool DrawWireframe(TGAImage& _image, Color _color);
-	bool DrawWireframeWithTriangle(TGAImage& _image, Color _color);
-	bool DrawWithRandomColor(TGAImage& _image);
-	bool DrawWithFlatColor(TGAImage& _image, Color _color);
-	bool DrawWithFlatLight(TGAImage& _image);
+	bool DrawWireframe(TGA& _image, Color _color);
+	bool DrawWireframeWithTriangle(TGA& _image, Color _color);
+	bool DrawWithRandomColor(TGA& _image);
+	bool DrawWithFlatColor(TGA& _image, Color _color);
+	bool DrawWithFlatLight(TGA& _image);
 };

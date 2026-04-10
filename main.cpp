@@ -1,4 +1,4 @@
-#include "imageFormats/TGAImage.h"
+#include "fileFormats/TGA.h"
 #include "geometryFormats/OBJGeometry.h"
 #include <iostream>
 #include <string>
@@ -36,7 +36,7 @@ TimeStamp& TimeStamp::instance = gTimeStamp;
 int main(int argc, const char* argv[])
 {
 	TimeStamp::Start();
-	TGAImage image_light(width, height, 3);
+	TGA image_light(width, height, 3);
 
 	OBJGeometry obj;
 	obj.SetZoom(1000.0f);

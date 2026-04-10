@@ -4,11 +4,11 @@
 
 /.vs/tinytinyrenderer/v15
 /Debug
-/imageFormats/Debug
+/fileFormats/Debug
 /Application/Debug
 /Application/b.tga
 /Application/a.tga
-/imageFormats/x64/Debug
+/fileFormats/x64/Debug
 /lineAlgorithm/Debug
 /lineAlgorithm/x64/Debug
 /Application/x64/Debug
@@ -19,7 +19,7 @@
 /triangleAlgorithm/x64/Debug
 /Application/x64/Release
 /geometryFormats/x64/Release
-/imageFormats/x64/Release
+/fileFormats/x64/Release
 /lineAlgorithm/x64/Release
 /math/x64/Release
 /triangleAlgorithm/x64/Release
