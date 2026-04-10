@@ -16,4 +16,4 @@ add_subdirectory(math)
 add_subdirectory(triangleAlgorithm)
 
 add_executable(tinytinyrenderer main.cpp)
-target_link_libraries(tinytinyrenderer PRIVATE geometryFormats imageFormats lineAlgorithm math triangleAlgorithm)
+target_link_libraries(tinytinyrenderer PRIVATE geometryFormats fileFormats lineAlgorithm math triangleAlgorithm)

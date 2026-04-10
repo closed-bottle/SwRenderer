@@ -1,2 +1,2 @@
-﻿project(imageFormats)
-add_library(imageFormats Color.cpp TGA.cpp)
+﻿project(fileFormats)
+add_library(fileFormats Color.cpp TGA.cpp)
