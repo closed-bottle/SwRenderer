@@ -1,8 +1,11 @@
 #pragma once
-#include <vector>
-#include <string>
-#include "../math/Vector.h"
 
+#include "special-lamp/lampVector.h++"
+#include "special-lamp/lampString.h++"
+#include "special-lamp/lampMath.h++"
+
+
+using namespace Lamp;
 class OBJGeometry
 {
 	// Reference : http://paulbourke.net/dataformats/obj/
@@ -61,18 +64,18 @@ class OBJGeometry
 		o       surface approximation technique(stech)
 		*/
 
-	std::string material_library_name_;
+	String material_library_name_;
 	// std::string object_name[]; Not sure we need it or not.
-	std::vector<Vec3f> geometric_vertices_;
-	std::vector<Vec3f> texture_vertices_;
-	std::vector<Vec3f> vertex_normals_;
+	Vector<Vec3f> geometric_vertices_;
+	Vector<Vec3f> texture_vertices_;
+	Vector<Vec3f> vertex_normals_;
 
 
 	float width_ = 100.0f;
 	float height_ = 100.0f;
 	float zoom_ = 1.0f;
 public: 
-	OBJGeometry(std::string _filename);
+	OBJGeometry(String _filename);
 	OBJGeometry();
 
 	void SetWidth(float _new_width);
@@ -80,5 +83,5 @@ public:
 	void SetWidthHeight(float _new_width, float _new_height);
 	void SetZoom(float _new_zoom);
 	
-	bool LoadFromOBJFile(std::string _filename);
+	bool LoadFromOBJFile(String _filename);
 };

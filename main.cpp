@@ -1,6 +1,6 @@
 #include "renderUtils/Memory.h"
 //#include "fileFormats/TGA.h"
-#include "geometryFormats/OBJGeometry.h"
+#include "fileFormats/OBJGeometry.h"
 #include <iostream>
 #include <string>
 #include <chrono>

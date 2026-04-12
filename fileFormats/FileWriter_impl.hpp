@@ -48,14 +48,6 @@ namespace {
 
         //https://en.wikipedia.org/wiki/Run-length_encoding
         bool CompressRLE(std::ofstream& _input_file);
-
-        bool IsInsideBoundary(unsigned int _x_coord, unsigned int _y_coord);
-        template<typename T>
-        bool IsInsideBoundary(Vector2D<T> _input)
-        {
-            return IsInsideBoundary(static_cast<unsigned int>(_input.x), static_cast<unsigned int>(_input.y));
-        }
-
         enum Format
         {
             GRAYSCALE = 1, RGB = 3, RGBA = 4

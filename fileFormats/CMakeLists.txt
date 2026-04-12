@@ -1,2 +1,2 @@
 ﻿project(fileFormats)
-add_library(fileFormats Color.cpp)
+add_library(fileFormats OBJGeometry.cpp)

@@ -1,2 +1,0 @@
-﻿project(geometryFormats)
-add_library(geometryFormats OBJGeometry.cpp)
