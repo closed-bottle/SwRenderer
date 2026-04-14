@@ -3,10 +3,10 @@
 #define TINYTINYRENDERER_MEMORY_H
 
 #include <cstdint>
-#include <vector>
+#include "special-lamp/lampVector.h++"
 
 class Memory {
-    std::vector<uint8_t> bytes;
+    Lamp::Vector<uint8_t> bytes;
 public:
     Memory() = delete;
 

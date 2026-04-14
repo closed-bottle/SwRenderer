@@ -34,17 +34,17 @@ std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
 
-constexpr int width = 3000;
-constexpr int height = 2500;
+constexpr int width = 12;
+constexpr int height = 11;
 constexpr int channel = 3;
 
 int main(int argc, const char* argv[])
 {
 	TimeStamp::Start();
-
-
 	Memory memory(width * height * channel);
-	Image<PixelFormat::R8G8B8> render_target(memory, width, height);
+	Image<PixelFormat::B8G8R8> render_target(memory, width, height);
+	//render_target.FillDiffDebug();
+	render_target.FillImage({255, 255, 0});
 
 	FileWriter::WriteImageToFile<FileWriter::FFormat::TGACompressed>("fwriter.tga", render_target);
 

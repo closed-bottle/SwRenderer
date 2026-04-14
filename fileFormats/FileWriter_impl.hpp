@@ -2,7 +2,7 @@
 
 #include <cstring>
 #include <fstream>
-#include "FileWriter.h"
+#include "FileUtils.h"
 
 namespace {
     namespace TGA {
@@ -23,6 +23,7 @@ namespace {
         // - image descriptor 1 byte
         struct Header
         {
+#pragma pack(push, 1)
             struct ColorMapSpec
             {
                 short first_entry_index_ = 0;
@@ -39,15 +40,15 @@ namespace {
                 char bits_per_pixel_ = 0;
                 char image_origin_ = 0;
             };
-            char id_length_ = 0;
-            char colorMap_type_ = 0;
-            char image_type_ = 0;
+#pragma pop
+            uint8_t id_length_ = 0;
+            uint8_t colorMap_type_ = 0;
+            uint8_t image_type_ = 0;
             ColorMapSpec colorMap_spec_;
             ImageSpec image_spec_;
         };
 
         //https://en.wikipedia.org/wiki/Run-length_encoding
-        bool CompressRLE(std::ofstream& _input_file);
         enum Format
         {
             GRAYSCALE = 1, RGB = 3, RGBA = 4
@@ -112,18 +113,14 @@ namespace {
 				return false;
 			}
 
+
 			if (!is_compress)
 			{
 				auto color_size = sizeof(PF); // default = 32bits
 
-				if (header.image_spec_.bits_per_pixel_ == 24)
-					color_size -= 1;
-
-				//unsigned int count = 0;
-				//unsigned int maximum = static_cast<unsigned int>(data_.size());
 				for (uint32_t i = 0; i < _image.NPixels(); i += color_size)
 				{
-					auto* itr = reinterpret_cast<ImageFormat<PixelFormat::R8G8B8>*>(&_image.Data()[i]);
+					auto* itr = reinterpret_cast<Texel<PixelFormat::R8G8B8>*>(&_image.Data()[i]);
 					// TGA pixel color is in form of : BGRA.
 					// So swap RGBA to BGRA
 					std::swap(itr->R, itr->B);
@@ -139,9 +136,53 @@ namespace {
 					}
 				}
 			}
-			//else
-			//	CompressRLE(output_file, _image);
+			else {
+				Vector<uint8_t> bytes;
+				bytes = FileUtils::RLE<128, PF>(_image);
 
+				//for (auto& b : bytes)
+				//	cout << (int)b << '\n';
+				//cout << endl;
+
+				Vector<uint8_t> tga;
+
+
+				uint64_t i = 0;
+				while (i < bytes.size()) {
+					auto header = bytes[i];
+					tga.push_back(header);
+					auto header_index = tga.size() -1;
+
+					if (header == 0) {
+						uint64_t window = 0;
+						while (i + window < bytes.size() && tga[header_index] < 128) {
+							header = bytes[i + window];
+							if (header != 0)
+								break;
+							++window;
+							FileUtils::PushBytes(tga, _image.Stride(), &bytes[i + window]);
+							Texel<PixelFormat::B8G8R8> debg = *reinterpret_cast<Texel<PixelFormat::B8G8R8>*>(&bytes[i + window]);
+
+							//cout << (int)debg.B << " | " << (int)debg.G << " | " << (int)debg.R << endl;
+
+							window += _image.Stride();
+							++tga[header_index];
+						}
+
+						tga[header_index] -= 1; // map range, 1->0, 128->127.
+						i += window;
+					}
+					else {
+						tga[header_index] += 128 -1; // map range.
+						++i;
+						FileUtils::PushBytes(tga, _image.Stride(), &bytes[i]);
+						i += _image.Stride();
+					}
+				}
+
+
+				output_file.write((char*)tga.data(), tga.size());
+			}
 
 			output_file.write((char *)developer_area, sizeof(developer_area));
 			if (!output_file.good())
