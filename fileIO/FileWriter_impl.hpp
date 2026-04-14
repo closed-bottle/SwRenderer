@@ -89,6 +89,9 @@ namespace {
 
 			std::ofstream output_file(_filename, std::ios_base::binary);
 
+    		// TODO: Noticed I need to handle endianness.
+    		//       Add byteswap if it is bigendian(TGA stores everything in LE).
+
 			if (!output_file.is_open())
 			{
 				std::cerr << "Can't save file : " << _filename.c_str() << ".\n";
@@ -211,7 +214,7 @@ namespace {
     }
 }
 
-template<FileWriter::FFormat FF, PixelFormat PF>
+template<FFormat FF, PixelFormat PF>
 void FileWriter::WriteImageToFile(std::string _path, const Image<PF>& _image) {
     if (FF ==FFormat::TGACompressed) {
 		TGA::SaveToFile(_path, true, _image);

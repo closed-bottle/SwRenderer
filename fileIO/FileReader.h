@@ -2,6 +2,9 @@
 #define TINYTINYRENDERER_FILEREADER_H
 
 
+class FileReader {
+
+};
 
 
 #include "FileReader_impl.hpp"

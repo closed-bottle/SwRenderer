@@ -2,17 +2,12 @@
 #define TINYTINYRENDERER_FILEWRITER_H
 
 #include "../renderUtils/Image.h"
+#include "FileFormats.h"
 #include <string>
 
 
 class FileWriter {
 public:
-    enum class FFormat {
-        TGACompressed = 0,
-        TGANonCompressed = 0,
-        Count
-    };
-
     template<FFormat FF, PixelFormat PF>
     static void WriteImageToFile(std::string _path, const Image<PF>& _image);
 };
