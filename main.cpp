@@ -32,19 +32,19 @@ std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
 
-constexpr int width = 12;
-constexpr int height = 11;
+constexpr int width = 512;
+constexpr int height = 512;
 constexpr int channel = 3;
 
 int main(int argc, const char* argv[])
 {
 	TimeStamp::Start();
-	Memory memory(width * height * channel);
-	Image<PixelFormat::B8G8R8> render_target(memory, width, height);
+	Memory image_memory(width * height * channel);
+	Image<PixelFormat::B8G8R8> render_target(image_memory, width, height);
 	//render_target.FillDiffDebug();
 	render_target.FillImage({255, 255, 0});
 
-	FileWriter::WriteImageToFile<FileWriter::FFormat::TGACompressed>("fwriter.tga", render_target);
+	FileWriter::WriteImageToFile<FFormat::TGACompressed>("fwriter.tga", render_target);
 
 	TimeStamp::End();
 	std::cout << "Total : " << TimeStamp::Duration() << std::endl;
