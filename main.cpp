@@ -3,6 +3,7 @@
 #include <string>
 #include <chrono>
 
+#include "fileIO/FileReader.h"
 #include "fileIO/FileWriter.h"
 #include "renderUtils/Image.h"
 
@@ -44,7 +45,12 @@ int main(int argc, const char* argv[])
 	//render_target.FillDiffDebug();
 	render_target.FillImage({255, 255, 0});
 
+	Geometry geom;
+	Mesh mesh;
+	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("fwriter.tga", render_target);
+
+
 
 	TimeStamp::End();
 	std::cout << "Total : " << TimeStamp::Duration() << std::endl;

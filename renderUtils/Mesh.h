@@ -2,8 +2,9 @@
 #define TINYTINYRENDERER_MESH_H
 #include "special-lamp/lampString.h++"
 
-class Mesh {
-    Lamp::String name_;
+struct Mesh {
+    Lamp::String material_name_;
+    Lamp::String object_name_;
     uint64_t vertex_offset_ = 0;
     uint64_t vertex_count_ = 0;
     uint64_t index_offset_ = 0;

@@ -3,11 +3,11 @@
 #include "FileFormats.h"
 #include "special-lamp/lampString.h++"
 #include "../renderUtils/Geometry.h"
-
+#include "../renderUtils/Mesh.h"
 class FileReader {
 public:
     template<FFormat FF>
-    static void LoadGeometryFile(const Lamp::String& _path, Geometry& _out);
+    static bool LoadGeometryFile(const Lamp::String& _path, Geometry& _out_geom, Mesh& _out_mesh);
 };
 
 
