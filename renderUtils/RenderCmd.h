@@ -33,8 +33,8 @@ struct RenderCmd {
             reinterpret_cast<const void*>(&_render_info)});
     }
 
-    template<PixelFormat colorformat, PixelFormat depthFormat>
-    static void BindPipeline(CommandBuff& _cmd, const Pipeline<colorformat, depthFormat>& _pipeline) {
+
+    static void BindPipeline(CommandBuff& _cmd, const Pipeline& _pipeline) {
         _cmd.execution_list_.push_back({CmdType::BindPipeline,
             reinterpret_cast<const void*>(&_pipeline)});
     }

@@ -1,37 +1,35 @@
 ﻿#include "Image.h"
 
 
-template<PixelFormat F>
-void Image<F>::FillDiffDebug() const {
+void Image::FillDiffDebug() const {
     // Fill in gradient.
     // most likely for debug purpose.
     // Note that is is actually nothing near to the gradient, but visualizing
     // direction.
-    Texel<F> t = {};
-    uint8_t* buff = reinterpret_cast<uint8_t*>(&t);
-
-    Texel<F>* data = reinterpret_cast<Texel<F>*>(Data());
+    uint8_t* buff = new uint8_t[stride_];
+    uint8_t* data = static_cast<uint8_t*>(Data());
     for (size_t i = 0; i < n_pixels_; ++i) {
-        if (i % 3 == 0) {
-            buff[sizeof(t) -1] = 0;
+        if (i % ElementCount(format_) == 0) {
+            buff[stride_ -1] = 0;
             buff[0] = 255;
         }
         else {
-            buff[i%sizeof(t)] = buff[i%sizeof(t) -1];
-            buff[i%sizeof(t) -1] = 0;
+            buff[i%stride_] = buff[i%stride_ -1];
+            buff[i%stride_ -1] = 0;
         }
 
-        data[i] = t;
+        memcpy(data, buff, stride_);
     }
+
+    delete[] buff;
 }
 
-template<PixelFormat F>
-void Image<F>::FillImage(Texel<F> _clear) const {
+void Image::FillImage(const Texel& _clear) const {
     // Fill in same color.
     // Possibly can be used to clear buffer.
 
-    Texel<F>* data = reinterpret_cast<Texel<F>*>(Data());
+    uint8_t* data = static_cast<uint8_t*>(Data());
     for (size_t i = 0; i < n_pixels_; ++i) {
-        data[i] = _clear;
+        memcpy(data, &_clear, stride_);
     }
 }

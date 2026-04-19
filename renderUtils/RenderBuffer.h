@@ -7,7 +7,6 @@ struct VertexBuffer {
     uint64_t count_ = 0;
 };
 
-
 struct IndexBuffer {
     void* data_ = nullptr;
     uint64_t count_ = 0;
