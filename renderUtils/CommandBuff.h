@@ -2,6 +2,9 @@
 #define TINYTINYRENDERER_COMMANDBUFF_H
 #include "AttachmentInfo.h"
 #include "Pipeline.h"
+#include "Viewport.h"
+#include "RenderInfo.h"
+#include "Render.h"
 #include "special-lamp/lampList.h++"
 
 
@@ -28,6 +31,7 @@ enum class CmdType {
 struct CmdBlock {
     CmdType type_ = CmdType::Invalid;
     const void* data_ = nullptr;
+    const void* writable_data_ = nullptr;
 };
 
 // Ultimately, command buffers life cycle should be :
@@ -37,12 +41,14 @@ class CommandBuff {
 
     template<PixelFormat color_format, PixelFormat depth_format>
     struct RenderCmdInfo {
-        Lamp::Vector<AttInfo<color_format>> color_att_infos_ = {};
-        AttInfo<depth_format> depth_att_info_ = {};
-        WindingOrder front_face = WindingOrder::Count;
-        Lamp::Vector<Image<color_format>> color_atts_;
-        Image<depth_format> depth_att_;
-        ShaderName shader_ = ShaderName::Count;
+        const Viewport* view_port_;
+        const RenderInfo<color_format, depth_format>* render_info_;
+        const Pipeline* pipeline_;
+        const Render::ShaderFootprint* uniform_;
+        const VertexBuffer* vertex_buffer_;
+        const IndexBuffer* index_buffer_;
+        const WindingOrder* front_face_;
+        const ShaderName* shader_;
     };
 
 
@@ -50,9 +56,18 @@ class CommandBuff {
     bool is_rendering_ = false;
 
     Lamp::list<CmdBlock> execution_list_;
+
+    template<PixelFormat color_format, PixelFormat depth_format>
+    void Execute_impl();
 public:
     bool IsExecutable() const {return !is_active_ && !is_rendering_;}
-    void Execute() const;
+
+    template<PixelFormat color_format, PixelFormat depth_format>
+    void Execute() {
+        Execute_impl<color_format, depth_format>();
+    }
 };
+
+#include "CommandBuff_impl.hpp"
 
 #endif //TINYTINYRENDERER_COMMANDBUFF_H

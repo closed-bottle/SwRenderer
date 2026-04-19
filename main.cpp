@@ -65,8 +65,11 @@ int main(int argc, const char* argv[])
 	Viewport viewport = {0, 0, width, height,near, far};
 
 	Memory image_memory(2 * (width * height * channel));
+	memset(image_memory.Data(), 0, 2 * (width * height * channel));
 	Image<PixelFormat::B8G8R8> color_att(image_memory, 0, width, height);
 	Image<PixelFormat::D16> depth_att(image_memory, (width * height * channel), width, height);
+
+
 
 	AttInfo color_att_info = {
 		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,{0,0,0}
@@ -80,10 +83,7 @@ int main(int argc, const char* argv[])
 		1, &color_att_info, &depth_att_info
 	};
 
-	Pipeline render_pipeline = {WindingOrder::CCW,
-					1, &color_att,
-					1, &depth_att,
-					ShaderName::LineShader};
+	Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::LineShader};
 
 	CommandBuff cmd_buff;
 	RenderCmd::BeginCmd(cmd_buff);
@@ -106,6 +106,9 @@ int main(int argc, const char* argv[])
 	// Implement queue
 	// Submit queue
 
+	// Remove templates later for runtime format specification.
+	if (cmd_buff.IsExecutable())
+		cmd_buff.Execute<PixelFormat::B8G8R8, PixelFormat::D16>();
 
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);

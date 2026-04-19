@@ -1,0 +1,45 @@
+﻿#include "CommandBuff.h"
+
+#include "RenderInfo.h"
+#include "Viewport.h"
+
+template<PixelFormat color_format, PixelFormat depth_format>
+void CommandBuff::Execute_impl() {
+    RenderCmdInfo<color_format, depth_format> cmd_info;
+
+    for (auto& exe : execution_list_) {
+        switch (exe.type_) {
+            case CmdType::SetViewport:
+                cmd_info.view_port_ = static_cast<const Viewport*>(exe.data_);
+                break;
+            case CmdType::SetRenderInfo:
+                cmd_info.render_info_ = static_cast<const RenderInfo<color_format, depth_format>*>(exe.data_);
+                break;
+            case CmdType::BindPipeline:
+                cmd_info.pipeline_ = static_cast<const Pipeline*>(exe.data_);
+                break;
+            case CmdType::BindUniform:
+                cmd_info.uniform_ = static_cast<const Render::ShaderFootprint*>(exe.data_);
+                break;
+            case CmdType::BindVertexBuffer:
+                cmd_info.vertex_buffer_ = static_cast<const VertexBuffer*>(exe.data_);
+                break;
+            case CmdType::BindIndexBuffer:
+                cmd_info.index_buffer_ = static_cast<const IndexBuffer*>(exe.data_);
+                break;
+            case CmdType::DrawIndexed:
+                // Color
+                // It should query number of attachmenets depending on the shader.
+                Render::Draw(
+                            cmd_info.render_info_->_color_att[0].image_,
+                            *cmd_info.vertex_buffer_,
+                            *cmd_info.index_buffer_,
+                            cmd_info.uniform_);
+                // Depth
+                break;
+            default:
+                // Handle error.
+                break;
+        }
+    }
+}
