@@ -9,20 +9,9 @@ namespace {
         return reinterpret_cast<const T*>(_data + _offset + (sizeof(T) * _i));
     }
 
-    void ClipSpaceScreenSpace(const RenderCmdInfo& _cmd_info, Lamp::Vec4f& _v) {
+    void ClipSpaceScreenSpace(const RenderCmdInfo& _cmd_info, const Lamp::Mat4f &_viewport, Lamp::Vec4f& _v) {
         _v /= _v.w;
-
-        auto& view_port = _cmd_info.view_port_;
-
-        const float f_width  = view_port->width;
-        const float f_height = view_port->height;
-
-        const Lamp::Mat4f viewport_transform
-            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
-                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
-            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
-
-        _v = viewport_transform * _v;
+        _v = _viewport * _v;
     }
 
     // Note that it is not the proper algorithm to plot points on the screen,
@@ -37,6 +26,14 @@ namespace {
         const uint32_t uiwidth = view_port->width;
         const uint32_t uiheight = view_port->height;
 
+        const float f_width  = view_port->width;
+        const float f_height = view_port->height;
+
+        const Lamp::Mat4f viewport_transform
+            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
+                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
+            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+
 
         for (uint64_t i = 0; i < _cmd_info.vertex_buffer_->count_; ++i) {
             auto v3 = *(static_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->data_) + (sizeof(Lamp::Vec3f) * i));
@@ -44,7 +41,7 @@ namespace {
 
             v4 = uniform->mvp * v4;
 
-            ClipSpaceScreenSpace(_cmd_info, v4);
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v4);
 
             constexpr uint8_t color[] = {255, 0, 255};
             if (v4.x >= view_port->x
@@ -69,6 +66,7 @@ namespace {
     void plotLine(const RenderCmdInfo& _cmd_info, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
         constexpr uint8_t color[] = {255, 255, 0};
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
+
         auto& view_port = _cmd_info.view_port_;
         const int x = view_port->x;
         const int y = view_port->y;
@@ -110,6 +108,15 @@ namespace {
         auto& index_buffer = _cmd_info.index_buffer_;
         const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
+        auto& view_port = _cmd_info.view_port_;
+        const float f_width  = view_port->width;
+        const float f_height = view_port->height;
+
+        const Lamp::Mat4f viewport_transform
+            = Lamp::Mat4f::Translate(view_port->x + f_width * .5f,
+                                     view_port->y + f_height * .5f, (view_port->far + view_port->near) / 2.0f)
+            * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, (view_port->far - view_port->near) / 2.0f);
+
 
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
@@ -120,9 +127,9 @@ namespace {
             Lamp::Vec4f v1 = uniform->mvp * Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
             Lamp::Vec4f v2 = uniform->mvp * Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
 
-            ClipSpaceScreenSpace(_cmd_info, v0);
-            ClipSpaceScreenSpace(_cmd_info, v1);
-            ClipSpaceScreenSpace(_cmd_info, v2);
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v0);
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v1);
+            ClipSpaceScreenSpace(_cmd_info, viewport_transform, v2);
 
             // TODO : exclude already rendered lines.
             auto l0 = v2 - v0;
