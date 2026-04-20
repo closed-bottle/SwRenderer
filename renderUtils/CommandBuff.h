@@ -35,9 +35,6 @@ struct CmdBlock {
 class CommandBuff {
     friend class RenderCmd;
 
-
-
-
     bool is_active_ = false;
     bool is_rendering_ = false;
 
@@ -45,8 +42,8 @@ class CommandBuff {
 
 public:
     bool IsExecutable() const {return !is_active_ && !is_rendering_;}
-
     void Execute();
+    void Clear() {execution_list_.erase(0, execution_list_.size());}
 };
 
 #include "CommandBuff_impl.hpp"
