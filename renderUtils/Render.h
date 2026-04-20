@@ -1,11 +1,9 @@
 ﻿#ifndef TINYTINYRENDERER_RENDER_H
 #define TINYTINYRENDERER_RENDER_H
 
-#include "Image.h"
-#include "Geometry.h"
-#include "Mesh.h"
-#include "RenderBuffer.h"
 #include "special-lamp/lampMath.h++"
+
+struct RenderCmdInfo;
 
 enum class ShaderName {
     PointShader,
@@ -31,9 +29,7 @@ public:
             : ShaderFootprint(_sType), mvp(_mvp) {}
     };
 
-    static void Draw(Image& _render_target,
-                const VertexBuffer& _vb, const IndexBuffer& _ib,
-                const ShaderFootprint* _uniform);
+    static void Draw(const RenderCmdInfo& _cmd_info);
 };
 
 #include "Render_impl.hpp"

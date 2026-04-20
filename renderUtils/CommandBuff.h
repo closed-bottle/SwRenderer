@@ -1,10 +1,6 @@
 ﻿#ifndef TINYTINYRENDERER_COMMANDBUFF_H
 #define TINYTINYRENDERER_COMMANDBUFF_H
-#include "AttachmentInfo.h"
-#include "Pipeline.h"
-#include "Viewport.h"
-#include "RenderInfo.h"
-#include "Render.h"
+
 #include "special-lamp/lampList.h++"
 
 
@@ -39,16 +35,7 @@ struct CmdBlock {
 class CommandBuff {
     friend class RenderCmd;
 
-    struct RenderCmdInfo {
-        const Viewport* view_port_;
-        const RenderInfo* render_info_;
-        const Pipeline* pipeline_;
-        const Render::ShaderFootprint* uniform_;
-        const VertexBuffer* vertex_buffer_;
-        const IndexBuffer* index_buffer_;
-        const WindingOrder* front_face_;
-        const ShaderName* shader_;
-    };
+
 
 
     bool is_active_ = false;

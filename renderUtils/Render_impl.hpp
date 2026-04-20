@@ -1,4 +1,6 @@
 ﻿#include "Render.h"
+#include "RenderCmd.h"
+
 
 namespace {
 
@@ -24,22 +26,24 @@ namespace {
     // Note that it is not the proper algorithm to plot points on the screen,
     // it is unstable due to the nature direct casting.
     // Only for quick demonstration.
-    void DrawPointShader(Image& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
-                         const Render::UMvp* _uniform) {
+    void DrawPointShader(const RenderCmdInfo& _cmd_info) {
         // upper left = origin.
-        for (uint64_t i = 0; i < _vb.count_; ++i) {
-            auto v3 = *(static_cast<const Lamp::Vec3f*>(_vb.data_) + (sizeof(Lamp::Vec3f) * i));
+        auto& render_target = _cmd_info.render_info_->_color_att->image_;
+        const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
+
+        for (uint64_t i = 0; i < _cmd_info.vertex_buffer_->count_; ++i) {
+            auto v3 = *(static_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->data_) + (sizeof(Lamp::Vec3f) * i));
             Lamp::Vec4f v4 = {v3.x, v3.y, v3.z, 1};
 
-            v4 = _uniform->mvp * v4;
+            v4 = uniform->mvp * v4;
 
-            ClipSpaceScreenSpace(_render_target, v4);
+            ClipSpaceScreenSpace(render_target, v4);
 
             constexpr uint8_t color[] = {255, 0, 255};
-            if (v4.x > 0 && v4.x < _render_target.Width() && v4.y > 0 && v4.y < _render_target.Height()) {
-                void* ptr = static_cast<uint8_t *>(_render_target.Data())
-                            + _render_target.Width() * (uint32_t)v4.y + (uint32_t)v4.x;
-                memcpy(ptr, color, _render_target.Stride());
+            if (v4.x > 0 && v4.x < render_target.Width() && v4.y > 0 && v4.y < render_target.Height()) {
+                void* ptr = static_cast<uint8_t *>(render_target.Data())
+                            + render_target.Width() * (uint32_t)v4.y + (uint32_t)v4.x;
+                memcpy(ptr, color, render_target.Stride());
             }
         }
     }
@@ -84,47 +88,46 @@ namespace {
 
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
-    void DrawTriangleLineShader(Image& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
-                         const Render::UMvp* _uniform) {
-        const auto* vertices = static_cast<Lamp::Vec3f*>(_vb.data_);
+    void DrawTriangleLineShader(const RenderCmdInfo& _cmd_info) {
+        const auto* vertices = static_cast<Lamp::Vec3f*>(_cmd_info.vertex_buffer_->data_);
+        auto& render_target = _cmd_info.render_info_->_color_att->image_;
+        auto& index_buffer = _cmd_info.index_buffer_;
+        const auto& uniform = static_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
-        for (uint64_t i = 0; i < _ib.count_; i += 3) {
-            auto i0 = *(static_cast<uint32_t*>(_ib.data_) + i);
-            auto i1 = *(static_cast<uint32_t*>(_ib.data_) + i+1);
-            auto i2 = *(static_cast<uint32_t*>(_ib.data_) + i+2);
 
-            Lamp::Vec4f v0 = _uniform->mvp * Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
-            Lamp::Vec4f v1 = _uniform->mvp * Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
-            Lamp::Vec4f v2 = _uniform->mvp * Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
+        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
 
-            ClipSpaceScreenSpace(_render_target, v0);
-            ClipSpaceScreenSpace(_render_target, v1);
-            ClipSpaceScreenSpace(_render_target, v2);
+            Lamp::Vec4f v0 = uniform->mvp * Lamp::Vec4f(vertices[i0].x, vertices[i0].y, vertices[i0].z, 1.0f);
+            Lamp::Vec4f v1 = uniform->mvp * Lamp::Vec4f(vertices[i1].x, vertices[i1].y, vertices[i1].z, 1.0f);
+            Lamp::Vec4f v2 = uniform->mvp * Lamp::Vec4f(vertices[i2].x, vertices[i2].y, vertices[i2].z, 1.0f);
+
+            ClipSpaceScreenSpace(render_target, v0);
+            ClipSpaceScreenSpace(render_target, v1);
+            ClipSpaceScreenSpace(render_target, v2);
 
             // TODO : exclude already rendered lines.
             auto l0 = v2 - v0;
             auto l1 = v1 - v2;
             auto l2 = v0 - v1;
 
-            plotLine(_render_target, v0, v2);
-            plotLine(_render_target, v2, v1);
-            plotLine(_render_target, v1, v0);
+            plotLine(render_target, v0, v2);
+            plotLine(render_target, v2, v1);
+            plotLine(render_target, v1, v0);
         }
     }
 }
 
 
-void Render::Draw(Image& _render_target,
-                const VertexBuffer& _vb, const IndexBuffer& _ib,
-                const ShaderFootprint* _uniform) {
-    switch (_uniform->sType) {
+void Render::Draw(const RenderCmdInfo& _cmd_info) {
+    switch (_cmd_info.uniform_->sType) {
         case ShaderName::PointShader:
-            DrawPointShader(_render_target, _vb, _ib,
-                reinterpret_cast<const Render::UMvp*>(_uniform));
+            DrawPointShader(_cmd_info);
             break;
         case ShaderName::LineShader:
-            DrawTriangleLineShader(_render_target, _vb, _ib,
-                reinterpret_cast<const Render::UMvp*>(_uniform));
+            DrawTriangleLineShader(_cmd_info);
             break;
     }
 }

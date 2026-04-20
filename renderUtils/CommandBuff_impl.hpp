@@ -1,5 +1,5 @@
 ﻿#include "CommandBuff.h"
-
+#include "Render.h"
 #include "RenderInfo.h"
 #include "Viewport.h"
 
@@ -29,11 +29,7 @@ void CommandBuff::Execute() {
             case CmdType::DrawIndexed:
                 // Color
                 // It should query number of attachmenets depending on the shader.
-                Render::Draw(
-                            cmd_info.render_info_->_color_att[0].image_,
-                            *cmd_info.vertex_buffer_,
-                            *cmd_info.index_buffer_,
-                            cmd_info.uniform_);
+                Render::Draw(cmd_info);
                 // Depth
                 break;
             default:

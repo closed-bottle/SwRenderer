@@ -1,12 +1,25 @@
 ﻿#ifndef TINYTINYRENDERER_RENDERCOMMAND_H
 #define TINYTINYRENDERER_RENDERCOMMAND_H
-#include "AttachmentInfo.h"
+
 #include "CommandBuff.h"
 #include "RenderBuffer.h"
 #include "RenderInfo.h"
 #include "Viewport.h"
 
+enum class WindingOrder;
+struct Pipeline;
 struct VertexBuffer;
+
+struct RenderCmdInfo {
+    const Viewport* view_port_;
+    const RenderInfo* render_info_;
+    const Pipeline* pipeline_;
+    const Render::ShaderFootprint* uniform_;
+    const VertexBuffer* vertex_buffer_;
+    const IndexBuffer* index_buffer_;
+    const WindingOrder* front_face_;
+    const ShaderName* shader_;
+};
 
 struct RenderCmd {
     static void BeginCmd(CommandBuff& _cmd) {
