@@ -8,8 +8,8 @@
 
 class FileUtils {
 public:
-    template<size_t RunLength, PixelFormat PF>
-    static Lamp::Vector<uint8_t> RLE(const Image<PF>& _image);
+    template<size_t RunLength>
+    static Lamp::Vector<uint8_t> RLE(const Image& _image);
 
     static void PushBytes(Lamp::Vector<uint8_t>& _target, uint8_t _stride, const uint8_t* _data);
 };

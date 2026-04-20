@@ -12,12 +12,11 @@ enum class StoreOp {
     STORE_OP_DONT_CARE
 };
 
-template<PixelFormat PF>
 struct AttInfo {
-    Image<PF> image_;
+    Image image_;
     LoadOp load_op_;
     StoreOp store_op_;
-    Texel<PF> clear_val_;
+    void* clear_val_;
 };
 
 #endif //TINYTINYRENDERER_ATTACHMENTINFO_H

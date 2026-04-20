@@ -48,6 +48,8 @@ public:
 
     size_t SizeInByte() const { return size_in_byte_; }
 
+    PixelFormat Format() const { return format_; }
+
     void FillDiffDebug() const;
     void FillImage(const Texel& _clear) const;
 };

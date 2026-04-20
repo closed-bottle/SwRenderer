@@ -24,9 +24,9 @@ namespace {
 
     constexpr size_t stride[] = {
         0, //Invalid
-        8 * elements_count[static_cast<size_t>(PixelFormat::R8G8B8)], //R8G8B8
-        8 * elements_count[static_cast<size_t>(PixelFormat::B8G8R8)], //B8G8R8
-        16 * elements_count[static_cast<size_t>(PixelFormat::D16)], //D16
+        1 * elements_count[static_cast<size_t>(PixelFormat::R8G8B8)], //R8G8B8
+        1 * elements_count[static_cast<size_t>(PixelFormat::B8G8R8)], //B8G8R8
+        2 * elements_count[static_cast<size_t>(PixelFormat::D16)], //D16
         0 //Count
     };
 }
@@ -81,12 +81,14 @@ struct B8G8R8 : Texel{
     uint8_t G;
     uint8_t R;
 
+    B8G8R8(uint8_t _B, uint8_t _G, uint8_t _R) : B(_B), G(_G), R(_R) {}
+
     constexpr PixelFormat Format() override {
         return PixelFormat::B8G8R8;
     }
 
     B8G8R8 operator+(const B8G8R8& _r) const {
-        B8G8R8 result;
+        B8G8R8 result{0, 0, 0};
         result.R += _r.R;
         result.G += _r.G;
         result.B += _r.B;
@@ -112,12 +114,14 @@ struct B8G8R8 : Texel{
 struct D16 : Texel {
     uint16_t D;
 
+    D16(uint16_t _d) : D(_d) {}
+
     constexpr PixelFormat Format() override {
         return PixelFormat::D16;
     }
 
     D16 operator+(const D16& _r) const {
-        D16 result;
+        D16 result{0};
         result.D += _r.D;
         return result;
     }

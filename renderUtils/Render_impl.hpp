@@ -7,8 +7,7 @@ namespace {
         return reinterpret_cast<const T*>(_data + _offset + (sizeof(T) * _i));
     }
 
-    template<PixelFormat PF>
-    void ClipSpaceScreenSpace(Image<PF>& _render_target, Lamp::Vec4f& _v) {
+    void ClipSpaceScreenSpace(Image& _render_target, Lamp::Vec4f& _v) {
         _v /= _v.w;
 
         const float f_width  = static_cast<float>(_render_target.Width());
@@ -25,8 +24,7 @@ namespace {
     // Note that it is not the proper algorithm to plot points on the screen,
     // it is unstable due to the nature direct casting.
     // Only for quick demonstration.
-    template<PixelFormat PF>
-    void DrawPointShader(Image<PF>& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
+    void DrawPointShader(Image& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
                          const Render::UMvp* _uniform) {
         // upper left = origin.
         for (uint64_t i = 0; i < _vb.count_; ++i) {
@@ -37,9 +35,11 @@ namespace {
 
             ClipSpaceScreenSpace(_render_target, v4);
 
-
+            constexpr uint8_t color[] = {255, 0, 255};
             if (v4.x > 0 && v4.x < _render_target.Width() && v4.y > 0 && v4.y < _render_target.Height()) {
-                _render_target.Data()[_render_target.Width() * (uint32_t)v4.y + (uint32_t)v4.x] = {255, 0, 255};
+                void* ptr = static_cast<uint8_t *>(_render_target.Data())
+                            + _render_target.Width() * (uint32_t)v4.y + (uint32_t)v4.x;
+                memcpy(ptr, color, _render_target.Stride());
             }
         }
     }
@@ -51,8 +51,9 @@ namespace {
     // "A Rasterizing Algorithm for Drawing Curves".
     // Copyright (c) Alois Zingl
     // The code (function "plotLine") Licensed under the MIT License
-    template<PixelFormat PF>
-    void plotLine(Image<PF>& _render_target, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
+
+    void plotLine(Image& _render_target, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
+        constexpr uint8_t color[] = {255, 255, 0};
 
         int x0 = _start.x;
         int x1 = _end.x;
@@ -65,7 +66,9 @@ namespace {
         int err = dx+dy, e2; /* error value e_xy */
         for (;;){ /* loop */
             if (x0 > 0 && x0 < _render_target.Width() && y0 > 0 && y0 < _render_target.Height()) {
-                _render_target.Data()[_render_target.Width() * y0 + x0] = {255, 255, 0};
+                void* ptr = static_cast<uint8_t *>(_render_target.Data())
+                            + ((_render_target.Width() * y0 + x0) * _render_target.Stride());
+                memcpy(ptr, color, _render_target.Stride());
             }
             e2 = 2*err;
             if (e2 >= dy) { /* e_xy+e_x > 0 */
@@ -81,8 +84,7 @@ namespace {
 
     // Assume primitive is always triangle strip.
     // It can be added to template later if needed to implement other primitives.
-    template<PixelFormat PF>
-    void DrawTriangleLineShader(Image<PF>& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
+    void DrawTriangleLineShader(Image& _render_target, const VertexBuffer& _vb, const IndexBuffer& _ib,
                          const Render::UMvp* _uniform) {
         const auto* vertices = static_cast<Lamp::Vec3f*>(_vb.data_);
 
@@ -111,8 +113,8 @@ namespace {
     }
 }
 
-template<PixelFormat PF>
-void Render::Draw(Image<PF>& _render_target,
+
+void Render::Draw(Image& _render_target,
                 const VertexBuffer& _vb, const IndexBuffer& _ib,
                 const ShaderFootprint* _uniform) {
     switch (_uniform->sType) {

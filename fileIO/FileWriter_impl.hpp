@@ -49,10 +49,6 @@ namespace {
         };
 
         //https://en.wikipedia.org/wiki/Run-length_encoding
-        enum Format
-        {
-            GRAYSCALE = 1, RGB = 3, RGBA = 4
-        };
 
         // Image type
         // 0   No Image Data Included
@@ -80,8 +76,7 @@ namespace {
             RIGHT = 0b10000, TOP = 0b100000
         };
 
-    	template<PixelFormat PF>
-		bool SaveToFile(const std::string& _filename, bool is_compress, const Image<PF>& _image)
+		bool SaveToFile(const std::string& _filename, bool is_compress, const Image& _image)
 		{
 			uint8_t developer_area[] = { 0, 0, 0, 0 }; // Let dev area empty.
 			uint8_t extension_area[] = { 0, 0, 0, 0 }; // Let ext area empty.
@@ -103,9 +98,9 @@ namespace {
 			header.image_spec_.bits_per_pixel_ = _image.Stride() << 3;
 			header.image_spec_.width_ =  _image.Width();
 			header.image_spec_.height_ = _image.Height();
-			header.image_type_ = (static_cast<int>(_image.Stride()) == GRAYSCALE ?
+			header.image_type_ = (_image.Format() == PixelFormat::D16) ?
 								 (is_compress ? RLE_BLACK_WHITE : UNCOMP_BLACK_WHITE)
-							   : (is_compress ? RLE_TRUE_COLOR : UNCOMP_TRUE_COLOR));
+							   : (is_compress ? RLE_TRUE_COLOR : UNCOMP_TRUE_COLOR);
 			header.image_spec_.image_origin_ = 0b100000; // top-left origin
 
 			output_file.write(reinterpret_cast<char *>(&header), sizeof(header));
@@ -119,18 +114,16 @@ namespace {
 
 			if (!is_compress)
 			{
-				auto color_size = sizeof(PF); // default = 32bits
+				const auto color_size = _image.Stride();
 
-				for (uint32_t i = 0; i < _image.NPixels(); i += color_size)
+				for (uint32_t i = 0; i < _image.NPixels(); ++i)
 				{
-					auto* itr = reinterpret_cast<Texel<PixelFormat::R8G8B8>*>(&_image.Data()[i]);
-					// TGA pixel color is in form of : BGRA.
-					// So swap RGBA to BGRA
-					std::swap(itr->R, itr->B);
+					auto* itr = (static_cast<uint8_t*>(_image.Data()) + (i * color_size));
+
+					B8G8R8 dbg = *reinterpret_cast<B8G8R8*>(itr);
 
 					//std::cout << "Saving " << count++ << " of " << maximum << "datas." << std::endl;
-
-					output_file.write(reinterpret_cast<char*>(&itr), color_size);
+					output_file.write(reinterpret_cast<char*>(itr), color_size);
 					if (!output_file.good())
 					{
 						std::cerr << "Can't save raw data\n";
@@ -141,7 +134,7 @@ namespace {
 			}
 			else {
 				Lamp::Vector<uint8_t> bytes;
-				bytes = FileUtils::RLE<128, PF>(_image);
+				bytes = FileUtils::RLE<128>(_image);
 
 				//for (auto& b : bytes)
 				//	cout << (int)b << '\n';
@@ -164,9 +157,6 @@ namespace {
 								break;
 							++window;
 							FileUtils::PushBytes(tga, _image.Stride(), &bytes[i + window]);
-							Texel<PixelFormat::B8G8R8> debg = *reinterpret_cast<Texel<PixelFormat::B8G8R8>*>(&bytes[i + window]);
-
-							//cout << (int)debg.B << " | " << (int)debg.G << " | " << (int)debg.R << endl;
 
 							window += _image.Stride();
 							++tga[header_index];
@@ -214,9 +204,12 @@ namespace {
     }
 }
 
-template<FFormat FF, PixelFormat PF>
-void FileWriter::WriteImageToFile(std::string _path, const Image<PF>& _image) {
+template<FFormat FF>
+void FileWriter::WriteImageToFile(std::string _path, const Image& _image) {
     if (FF ==FFormat::TGACompressed) {
 		TGA::SaveToFile(_path, true, _image);
+    }
+    else if (FF ==FFormat::TGANonCompressed) {
+    	TGA::SaveToFile(_path, false, _image);
     }
 }

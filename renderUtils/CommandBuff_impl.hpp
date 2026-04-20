@@ -3,9 +3,8 @@
 #include "RenderInfo.h"
 #include "Viewport.h"
 
-template<PixelFormat color_format, PixelFormat depth_format>
-void CommandBuff::Execute_impl() {
-    RenderCmdInfo<color_format, depth_format> cmd_info;
+void CommandBuff::Execute() {
+    RenderCmdInfo cmd_info;
 
     for (auto& exe : execution_list_) {
         switch (exe.type_) {
@@ -13,7 +12,7 @@ void CommandBuff::Execute_impl() {
                 cmd_info.view_port_ = static_cast<const Viewport*>(exe.data_);
                 break;
             case CmdType::SetRenderInfo:
-                cmd_info.render_info_ = static_cast<const RenderInfo<color_format, depth_format>*>(exe.data_);
+                cmd_info.render_info_ = static_cast<const RenderInfo*>(exe.data_);
                 break;
             case CmdType::BindPipeline:
                 cmd_info.pipeline_ = static_cast<const Pipeline*>(exe.data_);

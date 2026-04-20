@@ -31,8 +31,7 @@ public:
             : ShaderFootprint(_sType), mvp(_mvp) {}
     };
 
-    template<PixelFormat PF>
-    static void Draw(Image<PF>& _render_target,
+    static void Draw(Image& _render_target,
                 const VertexBuffer& _vb, const IndexBuffer& _ib,
                 const ShaderFootprint* _uniform);
 };

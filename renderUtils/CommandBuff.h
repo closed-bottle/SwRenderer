@@ -39,10 +39,9 @@ struct CmdBlock {
 class CommandBuff {
     friend class RenderCmd;
 
-    template<PixelFormat color_format, PixelFormat depth_format>
     struct RenderCmdInfo {
         const Viewport* view_port_;
-        const RenderInfo<color_format, depth_format>* render_info_;
+        const RenderInfo* render_info_;
         const Pipeline* pipeline_;
         const Render::ShaderFootprint* uniform_;
         const VertexBuffer* vertex_buffer_;
@@ -57,15 +56,10 @@ class CommandBuff {
 
     Lamp::list<CmdBlock> execution_list_;
 
-    template<PixelFormat color_format, PixelFormat depth_format>
-    void Execute_impl();
 public:
     bool IsExecutable() const {return !is_active_ && !is_rendering_;}
 
-    template<PixelFormat color_format, PixelFormat depth_format>
-    void Execute() {
-        Execute_impl<color_format, depth_format>();
-    }
+    void Execute();
 };
 
 #include "CommandBuff_impl.hpp"

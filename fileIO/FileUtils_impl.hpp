@@ -6,16 +6,21 @@ void FileUtils::PushBytes(Lamp::Vector<uint8_t>& _target, uint8_t _stride, const
         _target.push_back(buff[j]);
 }
 
+namespace {
+    inline uint8_t* Index(const Image& _image, uint8_t* _ptr, size_t _begin, size_t _index) {
+        return _ptr + _begin + (_index * _image.Stride());
+    }
+}
 
 // Runs simple Intermediate Run Length Encoding
 // header :
 // 0 - 0 + Literal
 // anything else - Run Length + Literal
-template<size_t RunLength, PixelFormat PF>
-Lamp::Vector<uint8_t> FileUtils::RLE(const Image<PF>& _image) {
+template<size_t RunLength>
+Lamp::Vector<uint8_t> FileUtils::RLE(const Image& _image) {
     Lamp::Vector<uint8_t> result;
     size_t begin = 0;
-    const auto& data = _image.Data();
+    const auto& data = static_cast<uint8_t*>(_image.Data());
     auto n = _image.NPixels();
     uint8_t header = 0;
 
@@ -24,7 +29,8 @@ Lamp::Vector<uint8_t> FileUtils::RLE(const Image<PF>& _image) {
 
         auto while_same = [&]() {
             while (offset < n && offset < RunLength) {
-                if (data[begin + offset - 1] != data[begin + offset])
+                if (memcmp(Index(_image, data, begin, offset - 1),
+                    Index(_image, data, begin, offset), _image.Stride()) != 0)
                     break;
                 ++offset;
             }
@@ -33,7 +39,8 @@ Lamp::Vector<uint8_t> FileUtils::RLE(const Image<PF>& _image) {
 
         auto while_diff = [&]() {
             while (offset < n && offset < RunLength) {
-                if (data[begin + offset - 1] == data[begin + offset])
+                if (memcmp(Index(_image, data, begin, offset - 1),
+                    Index(_image, data, begin, offset), _image.Stride()) == 0)
                     break;
                 ++offset;
             }

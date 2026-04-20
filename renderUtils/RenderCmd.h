@@ -28,7 +28,7 @@ struct RenderCmd {
     }
 
     template<PixelFormat color_format = PixelFormat::Count, PixelFormat depth_format = PixelFormat::Count>
-    static void SetRenderInfo(CommandBuff& _cmd, RenderInfo<color_format, depth_format> _render_info) {
+    static void SetRenderInfo(CommandBuff& _cmd, const RenderInfo& _render_info) {
         _cmd.execution_list_.push_back({CmdType::SetRenderInfo,
             reinterpret_cast<const void*>(&_render_info)});
     }

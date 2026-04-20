@@ -11,6 +11,7 @@
 #include "renderUtils/Render.h"
 #include "renderUtils/RenderCmd.h"
 #include "renderUtils/Viewport.h"
+#include "renderUtils/ImageFormat.h"
 
 
 // Borrowed from special-lamp library.
@@ -66,17 +67,19 @@ int main(int argc, const char* argv[])
 
 	Memory image_memory(2 * (width * height * channel));
 	memset(image_memory.Data(), 0, 2 * (width * height * channel));
-	Image<PixelFormat::B8G8R8> color_att(image_memory, 0, width, height);
-	Image<PixelFormat::D16> depth_att(image_memory, (width * height * channel), width, height);
+	Image color_att(image_memory, PixelFormat::B8G8R8, 0, width, height);
+	// TODO : Handle alignment?
+	Image depth_att(image_memory, PixelFormat::D16, (width * height * channel), width, height);
 
-
+	B8G8R8 clear_color = {0, 0, 0};
+	D16 clear_depth = {0};
 
 	AttInfo color_att_info = {
-		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,{0,0,0}
+		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,&clear_color
 	};
 
 	AttInfo depth_att_info = {
-		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,{0}
+		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE, &clear_depth
 	};
 
 	RenderInfo render_info = {
@@ -108,8 +111,9 @@ int main(int argc, const char* argv[])
 
 	// Remove templates later for runtime format specification.
 	if (cmd_buff.IsExecutable())
-		cmd_buff.Execute<PixelFormat::B8G8R8, PixelFormat::D16>();
+		cmd_buff.Execute();
 
+	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
 	FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
 
