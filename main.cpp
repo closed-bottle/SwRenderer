@@ -99,10 +99,10 @@ int main(int argc, const char* argv[]) {
 
 			model = Lamp::Mat4f::Translate(0, 0, 0) *
 					Lamp::Mat4f::Pitch(rad) *
-				    Lamp::Mat4f::Scale(4, 4, 4);
+				    Lamp::Mat4f::Scale(1, -1, 1);
 
 
-			mvp = proj * view * model;
+			mvp = view * model;
 
 			CommandBuff cmd_buff;
 			RenderCmd::BeginCmd(cmd_buff);
