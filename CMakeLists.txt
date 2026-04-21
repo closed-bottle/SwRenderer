@@ -19,5 +19,5 @@ target_include_directories(renderUtils PRIVATE thirdparty)
 
 # Im using clang++, I'm not sure why cmake returns GNU.
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    target_compile_options(tinytinyrenderer PRIVATE -mavx2 -mfma)
+    target_compile_options(tinytinyrenderer PRIVATE -mavx2 -mfma -static-libstdc++ -static-libgcc)
 endif()
