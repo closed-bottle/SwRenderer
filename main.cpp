@@ -64,13 +64,14 @@ int main(int argc, const char* argv[]) {
 	auto mvp = proj * view * model;
 
 
+	// TODO : Do SoA for device buffers.
 	VertexBuffer pos_buffer = {geom.vertex_.Data() + mesh.vertex_offset_, mesh.vertex_count_};
 	IndexBuffer index_buffer = {geom.index_.Data() + mesh.index_offset_, mesh.index_count_};
 
 	Memory image_memory(16 * (width * height * channel));
 	memset(image_memory.Data(), 0, 16 * (width * height * channel));
 	Image color_att(image_memory, PixelFormat::B8G8R8, 0, width, height);
-	// TODO : Handle alignment?
+	// TODO : Handle alignment? Why it works?
 	//Image depth_att(image_memory, PixelFormat::D16, (width * height * channel), width, height);
 
 	B8G8R8 clear_color = {0, 0, 0};
