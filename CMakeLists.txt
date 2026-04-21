@@ -18,9 +18,6 @@ target_include_directories(SwRenderer PRIVATE thirdparty)
 target_include_directories(renderUtils PRIVATE thirdparty)
 
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(SwRenderer PRIVATE -mavx2 -mfma -static-libstdc++ -static-libgcc)
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_compile_options(SwRenderer PRIVATE -mavx2 -mfma -static-libstdc++ -static-libgcc)
-endif()
 endif()
