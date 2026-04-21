@@ -40,7 +40,7 @@ namespace {
                 char bits_per_pixel_ = 0;
                 char image_origin_ = 0;
             };
-#pragma pop
+#pragma pack(pop)
             uint8_t id_length_ = 0;
             uint8_t colorMap_type_ = 0;
             uint8_t image_type_ = 0;

@@ -55,7 +55,7 @@ int main(int argc, const char* argv[]) {
 
 	Geometry geom;
 	Mesh mesh;
-	FileReader::LoadGeometryFile<FFormat::OBJ>("Suzanne.obj", geom, mesh);
+	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
 
 	Lamp::Mat4f model = Lamp::Mat4f::Scale(5, 5, 5);
 	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, false);
