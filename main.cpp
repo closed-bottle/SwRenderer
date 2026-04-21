@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <chrono>
+#include <immintrin.h>
 
 #include "fileIO/FileReader.h"
 #include "fileIO/FileWriter.h"

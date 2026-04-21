@@ -16,3 +16,8 @@ add_executable(tinytinyrenderer main.cpp)
 target_link_libraries(tinytinyrenderer PRIVATE renderUtils)
 target_include_directories(tinytinyrenderer PRIVATE thirdparty)
 target_include_directories(renderUtils PRIVATE thirdparty)
+
+# Im using clang++, I'm not sure why cmake returns GNU.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(tinytinyrenderer PRIVATE -mavx2 -mfma)
+endif()
