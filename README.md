@@ -19,7 +19,7 @@ Current build only supports simple line drawing without triangle filling.
 ![Alt text](media/2cc524ed.png "Images")
 
 ## Current state
-![img.png](media/depth_error.png)
+![Alt text](media/depth_error.png "Images")
 Currently, experiencing precision issue from vertex interpolation.
 Image above shows vertex interpolation. "White" pixels are failed depth test with epsilon less than 0.0001.
 It has much less precision than expected, I'm suspecting it is due to the multiple stacking floating point arithmetic 
