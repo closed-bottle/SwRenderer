@@ -338,8 +338,10 @@ namespace {
         Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
         auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
-        auto preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
-        auto raster_data = preprocess.Data();
+        auto raster_alloc = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
+        auto raster_data = raster_alloc.Data();
+        auto depth_alloc = Memory(vertex_buffer->count_ * sizeof(double));
+        auto depth_data = depth_alloc.Data();
 
         auto& color_target = _cmd_info.render_info_->_color_att->image_;
         auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
@@ -386,10 +388,23 @@ namespace {
         for (uint64_t i = start; i <= end; ++i) {
             alignas(16) auto v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
             v0 = uniform->mvp * v0;
+
+            // From now on, this part handled by GPU automatically.
+            // I'll assume GPU uses double precision for depth.
+            // However, it can be something else, for example fixed point number
+            // for better numeric order? need more research.
+            double depth = v0.z;
+            depth /= v0.w;
             ClipToNdc(v0);
+
+            depth = viewport_transform.c0.z * v0.x
+                  + viewport_transform.c1.z * v0.y
+                  + viewport_transform.c2.z * depth
+                  + viewport_transform.c3.z * v0.w;
             NdcToWindow(viewport_transform, v0);
 
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
+            memcpy(&depth_data[i * sizeof(double)], &depth, sizeof(double));
         }
 
 
@@ -400,6 +415,7 @@ namespace {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
             auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
+
 
             alignas(16) Lamp::Vec4f v0 = new_vertices[i0];
             alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
@@ -441,7 +457,14 @@ namespace {
 
                     // If inside triangle
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        double curr_depth = w0 * v0.z + w1 * v1.z + w2 * v2.z;
+                        double d0;
+                        double d1;
+                        double d2;
+                        memcpy(&d0, &depth_data[i0 * sizeof(double)], sizeof(double));
+                        memcpy(&d1, &depth_data[i1 * sizeof(double)], sizeof(double));
+                        memcpy(&d2, &depth_data[i2 * sizeof(double)], sizeof(double));
+
+                        double curr_depth = w0 * d0 + w1 * d1 + w2 * d2;
 
                         uint8_t color[] = {static_cast<uint8_t>(255 * w0),
                                             static_cast<uint8_t>(255 * w1),
@@ -459,24 +482,14 @@ namespace {
                             // There are no near/far plane clipping yet.
 
                             const double d32_depth = 1.0 - curr_depth;
-                            const auto f_depth = static_cast<float>(d32_depth);
 
-                            if (std::abs(depth - d32_depth) < 0.0001) {
-                                void* color_ptr = static_cast<uint8_t *>(color_target.Data())
-                                    + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                                    * color_target.Stride();
-
-                                uint8_t ddebug[] = {255, 255, 255};
-
-                                memcpy(color_ptr, ddebug, color_target.Stride());
-                                memcpy(depth_ptr, &f_depth, depth_target.Stride());
-                            }
-                            else if (depth < d32_depth) {
+                            if (depth < d32_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
 
                                 memcpy(color_ptr, color, color_target.Stride());
+                                const auto f_depth = static_cast<float>(d32_depth);
                                 memcpy(depth_ptr, &f_depth, depth_target.Stride());
                             }
                         }
