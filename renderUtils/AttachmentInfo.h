@@ -16,7 +16,7 @@ struct AttInfo {
     Image image_;
     LoadOp load_op_;
     StoreOp store_op_;
-    void* clear_val_;
+    uint8_t* clear_val_;
 };
 
 #endif //TINYTINYRENDERER_ATTACHMENTINFO_H

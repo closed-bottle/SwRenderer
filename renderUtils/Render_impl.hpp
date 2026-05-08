@@ -350,8 +350,7 @@ namespace {
         const auto uiheight = static_cast<uint32_t>(view_port->height);
 
         if (_cmd_info.render_info_->_color_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
-            //const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
-            constexpr uint8_t clear_color[] = {0, 0, 255};
+            const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
             for (int i = 0; i < uiheight; ++i) {
                 for (int j = 0; j < uiwidth; ++j) {
                     void* color_ptr = static_cast<uint8_t *>(color_target.Data())
@@ -364,8 +363,7 @@ namespace {
         }
 
         if (_cmd_info.render_info_->_depth_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
-            //const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
-            constexpr uint8_t clear_depth[] = {0x00, 0x00, 0x00, 0x00};
+            const auto& clear_depth = _cmd_info.render_info_->_color_att->clear_val_;
             for (int i = 0; i < uiheight; ++i) {
                 for (int j = 0; j < uiwidth; ++j) {
                     void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())

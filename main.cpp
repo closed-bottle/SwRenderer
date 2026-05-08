@@ -81,14 +81,16 @@ int main(int argc, const char* argv[]) {
 	Image depth_att(image_memory, PixelFormat::D32, width * height * channel, width, height);
 
 	B8G8R8 clear_color = {255, 0, 0};
-	D32 clear_depth = {0xFFFF};
+	D32 clear_depth(0xFFFF);
 
 	AttInfo color_att_info = {
-		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,&clear_color
+		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,
+		reinterpret_cast<uint8_t*>(&clear_color)
 	};
 
 	AttInfo depth_att_info = {
-		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE, &clear_depth
+		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,
+		reinterpret_cast<uint8_t*>(&clear_depth)
 	};
 
 	RenderInfo render_info = {

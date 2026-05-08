@@ -1,7 +1,6 @@
 ﻿#ifndef TINYTINYRENDERER_IMAGEFORMAT_H
 #define TINYTINYRENDERER_IMAGEFORMAT_H
 #include <cstdint>
-
 #pragma pack(push, 1)
 
 enum class PixelFormat : size_t {
@@ -14,7 +13,7 @@ enum class PixelFormat : size_t {
 };
 
 // I don't think it is good idea to use nameless namespace in header.
-namespace {
+namespace ReservedImageFormatParams{
     constexpr size_t elements_count[] = {
         0, //Invalid
         3, //R8G8B8
@@ -35,28 +34,20 @@ namespace {
 }
 
 constexpr size_t ElementCount(PixelFormat _f) {
-    return elements_count[static_cast<size_t>(_f)];
+    return ReservedImageFormatParams::elements_count[static_cast<size_t>(_f)];
 }
 
 constexpr size_t FormatStride(PixelFormat _f) {
-    return stride[static_cast<size_t>(_f)];
+    return ReservedImageFormatParams::stride[static_cast<size_t>(_f)];
 }
 
-struct Texel {
-    virtual constexpr PixelFormat Format() = 0;
-};
-
-struct R8G8B8 : Texel {
+struct R8G8B8 {
     uint8_t R;
     uint8_t G;
     uint8_t B;
 
-    constexpr PixelFormat Format() override {
-        return PixelFormat::R8G8B8;
-    }
-
     R8G8B8 operator+(const R8G8B8& _r) const {
-        R8G8B8 result;
+        R8G8B8 result{};
         result.R += _r.R;
         result.G += _r.G;
         result.B += _r.B;
@@ -79,16 +70,12 @@ struct R8G8B8 : Texel {
     }
 };
 
-struct B8G8R8 : Texel{
+struct B8G8R8 {
     uint8_t B;
     uint8_t G;
     uint8_t R;
 
-    B8G8R8(uint8_t _B, uint8_t _G, uint8_t _R) : B(_B), G(_G), R(_R) {}
-
-    constexpr PixelFormat Format() override {
-        return PixelFormat::B8G8R8;
-    }
+    B8G8R8(const uint8_t _blue, const uint8_t _green, const uint8_t _red) : B(_blue), G(_green), R(_red) {}
 
     B8G8R8 operator+(const B8G8R8& _r) const {
         B8G8R8 result{0, 0, 0};
@@ -114,14 +101,10 @@ struct B8G8R8 : Texel{
     }
 };
 
-struct D16 : Texel {
+struct D16 {
     uint16_t D;
 
-    D16(uint16_t _d) : D(_d) {}
-
-    constexpr PixelFormat Format() override {
-        return PixelFormat::D16;
-    }
+    explicit D16(const uint16_t _d) : D(_d) {}
 
     D16 operator+(const D16& _r) const {
         D16 result{0};
@@ -144,14 +127,10 @@ struct D16 : Texel {
 };
 
 
-struct D32 : Texel {
+struct D32 {
     uint32_t D;
 
-    D32(uint32_t _d) : D(_d) {}
-
-    constexpr PixelFormat Format() override {
-        return PixelFormat::D32;
-    }
+    explicit D32(const uint32_t _d) : D(_d) {}
 
     D32 operator+(const D32& _r) const {
         D32 result{0};
