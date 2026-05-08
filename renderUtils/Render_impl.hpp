@@ -418,11 +418,14 @@ namespace {
             };
 
             auto edge = [](const Lamp::Vec4f& _v0, const Lamp::Vec4f& _v1, const Lamp::Vec4f& _v2) {
-                const Lamp::Vec2f a = {_v2.x - _v0.x, _v2.y - _v0.y}; //ab
-                const Lamp::Vec2f b = {_v1.x - _v0.x, _v1.y - _v0.y};//cd
+                const double a = static_cast<double>(_v2.x) - _v0.x;
+                const double d = static_cast<double>(_v1.y) - _v0.y;
+
+                const double b = static_cast<double>(_v2.y) - _v0.y;
+                const double c = static_cast<double>(_v1.x) - _v0.x;
 
                 // ad - bc.
-                return static_cast<double>(a.x) * b.y - static_cast<double>(a.y) * b.x;
+                return a * d - b * c;
             };
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
