@@ -16,10 +16,11 @@ Current build only supports simple line drawing without triangle filling.
  - OBJ loading.
  - TGA output writing.
 
-![Alt text](media/2cc524ed.png "Images")
+![multiple render target](media/2cc524ed.png)
 
 ## Current state
-![Alt text](media/depth_error.png "Images")
+![depth error](media/depth_error.png)
+
 Currently, experiencing precision issue from vertex interpolation.
 Image above shows vertex interpolation. "White" pixels are failed depth test with epsilon less than 0.0001.
 It has much less precision than expected, I'm suspecting it is due to the multiple stacking floating point arithmetic 
