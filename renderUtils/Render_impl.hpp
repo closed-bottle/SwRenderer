@@ -339,7 +339,7 @@ namespace RenderImpl{
     }
 
 
-    void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
+    inline void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
 #ifdef USE_SIMD
 #else
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
@@ -352,8 +352,6 @@ namespace RenderImpl{
         auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
         auto raster_alloc = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
         auto raster_data = raster_alloc.Data();
-        auto depth_alloc = Memory(vertex_buffer->count_ * sizeof(double));
-        auto depth_data = depth_alloc.Data();
 
         auto& color_target = _cmd_info.render_info_->_color_att->image_;
         auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
@@ -401,25 +399,11 @@ namespace RenderImpl{
             alignas(16) auto v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
             v0 = uniform->mvp * v0;
 
-            // From now on, this part handled by GPU automatically.
-            // I'll assume GPU uses double precision for depth.
-            // However, it can be something else, for example fixed point number
-            // for better numeric order? need more research.
-            double depth = v0.z;
-            depth /= v0.w;
             ClipToNdc(v0);
-
-            depth = viewport_transform.c0.z * v0.x
-                  + viewport_transform.c1.z * v0.y
-                  + viewport_transform.c2.z * depth
-                  + viewport_transform.c3.z * v0.w;
             NdcToWindow(viewport_transform, v0);
 
-            // Perspective correctness
-            depth = 1.0 / depth;
-
+            v0.z = 1.0f / v0.z;
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
-            memcpy(&depth_data[i * sizeof(double)], &depth, sizeof(double));
         }
 
 
@@ -468,12 +452,9 @@ namespace RenderImpl{
                             float depth;
                             memcpy(&depth, depth_ptr, sizeof(float));
 
-                            double d0;
-                            double d1;
-                            double d2;
-                            memcpy(&d0, &depth_data[i0 * sizeof(double)], sizeof(double));
-                            memcpy(&d1, &depth_data[i1 * sizeof(double)], sizeof(double));
-                            memcpy(&d2, &depth_data[i2 * sizeof(double)], sizeof(double));
+                            double d0 = v0.z;
+                            double d1 = v1.z;
+                            double d2 = v2.z;
 
                             // Imitating vertex color attribute.
                             double red   = 1.0 * d0;
