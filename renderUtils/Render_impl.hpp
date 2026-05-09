@@ -403,6 +403,9 @@ namespace {
                   + viewport_transform.c3.z * v0.w;
             NdcToWindow(viewport_transform, v0);
 
+            // Perspective correctness
+            depth = 1.0 / depth;
+
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
             memcpy(&depth_data[i * sizeof(double)], &depth, sizeof(double));
         }
@@ -415,7 +418,6 @@ namespace {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
             auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
-
 
             alignas(16) Lamp::Vec4f v0 = new_vertices[i0];
             alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
@@ -451,25 +453,14 @@ namespace {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
                     Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
 
-                    const double w0 = edge(v0, v1, p)/area;
-                    const double w1 = edge(v1, v2, p)/area;
-                    const double w2 = edge(v2, v0, p)/area;
+                    // There are some reference about barycentric coordinate in page 479.
+                    // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
+                    const double w0 = edge(v1, v2, p)/area;
+                    const double w1 = edge(v2, v0, p)/area;
+                    const double w2 = edge(v0, v1, p)/area;
 
                     // If inside triangle
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        double d0;
-                        double d1;
-                        double d2;
-                        memcpy(&d0, &depth_data[i0 * sizeof(double)], sizeof(double));
-                        memcpy(&d1, &depth_data[i1 * sizeof(double)], sizeof(double));
-                        memcpy(&d2, &depth_data[i2 * sizeof(double)], sizeof(double));
-
-                        double curr_depth = w0 * d0 + w1 * d1 + w2 * d2;
-
-                        uint8_t color[] = {static_cast<uint8_t>(255 * w0),
-                                            static_cast<uint8_t>(255 * w1),
-                                            static_cast<uint8_t>(255 * w2)};
-
                         if (k >= x && k < x + uiwidth && j >= y && j < y + uiheight) {
                             void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
                             + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
@@ -477,11 +468,28 @@ namespace {
                             float depth;
                             memcpy(&depth, depth_ptr, sizeof(float));
 
+                            double d0;
+                            double d1;
+                            double d2;
+                            memcpy(&d0, &depth_data[i0 * sizeof(double)], sizeof(double));
+                            memcpy(&d1, &depth_data[i1 * sizeof(double)], sizeof(double));
+                            memcpy(&d2, &depth_data[i2 * sizeof(double)], sizeof(double));
+                            d0 = 1.0 / d0;
+                            d1 = 1.0 / d1;
+                            d2 = 1.0 / d2;
+
+
+
+                            double perspective_correct = 1.0 / (w0 * d0 + w1 * d1 + w2 * d2);
+                            uint8_t color[] = {static_cast<uint8_t>(255 * w0),
+                                               static_cast<uint8_t>(255 * w1),
+                                               static_cast<uint8_t>(255 * w2)};
+
                             // Depth test.
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
 
-                            const double d32_depth = 1.0 - curr_depth;
+                            const double d32_depth = perspective_correct;
 
                             if (depth < d32_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
@@ -489,6 +497,7 @@ namespace {
                                     * color_target.Stride();
 
                                 memcpy(color_ptr, color, color_target.Stride());
+
                                 const auto f_depth = static_cast<float>(d32_depth);
                                 memcpy(depth_ptr, &f_depth, depth_target.Stride());
                             }
