@@ -253,7 +253,8 @@ namespace RenderImpl{
         for (; j < vertex_buffer->count_; ++j) {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(in_x[j], in_y[j], in_z[j], 1);
             v0 = uniform->mvp * v0;
-            ClipSpaceScreenSpace(viewport_transform, v0);
+            ClipToNdc(v0);
+            NdcToWindow(viewport_transform, v0);
 
 
             memcpy(&raster_data[sizeof(float) * j], &v0.x, sizeof(float));
@@ -341,6 +342,7 @@ namespace RenderImpl{
 
     inline void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
 #ifdef USE_SIMD
+
 #else
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
         auto& index_buffer = _cmd_info.index_buffer_;
