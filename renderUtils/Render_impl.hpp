@@ -2,7 +2,7 @@
 #include "RenderCmd.h"
 
 
-namespace {
+namespace RenderImpl{
 #ifdef USE_SIMD
     void MatrixVectorMul(const __m128& _c0, const __m128& _c1, const __m128& _c2, const __m128& _c3,
                          const float* _x, const float* _y, const float* _z, const float* _w,
@@ -45,6 +45,18 @@ namespace {
             * Lamp::Mat4f::Scale(f_width * .5f, f_height * -.5f, 1);
 
         return viewport_transform;
+    }
+
+    template<typename T>
+    T EdgeFunc(const Lamp::Vec4f& _v0, const Lamp::Vec4f& _v1, const Lamp::Vec4f& _v2) {
+        const T a = static_cast<T>(_v2.x) - _v0.x;
+        const T d = static_cast<T>(_v1.y) - _v0.y;
+
+        const T b = static_cast<T>(_v2.y) - _v0.y;
+        const T c = static_cast<T>(_v1.x) - _v0.x;
+
+        // ad - bc.
+        return a * d - b * c;
     }
 
     // Note that it is not the proper algorithm to plot points on the screen,
@@ -411,7 +423,6 @@ namespace {
         }
 
 
-
         auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
 
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
@@ -432,22 +443,11 @@ namespace {
                 static_cast<int>(std::max(std::max(v0.x, v1.x), v2.x)) + 1,
                 static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
             };
-
-            auto edge = [](const Lamp::Vec4f& _v0, const Lamp::Vec4f& _v1, const Lamp::Vec4f& _v2) {
-                const double a = static_cast<double>(_v2.x) - _v0.x;
-                const double d = static_cast<double>(_v1.y) - _v0.y;
-
-                const double b = static_cast<double>(_v2.y) - _v0.y;
-                const double c = static_cast<double>(_v1.x) - _v0.x;
-
-                // ad - bc.
-                return a * d - b * c;
-            };
-
+            
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
             double area;
-            area = edge(v0, v1, v2);
+            area = EdgeFunc<double>(v0, v1, v2);
 
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
@@ -455,9 +455,9 @@ namespace {
 
                     // There are some reference about barycentric coordinate in page 479.
                     // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
-                    const double w0 = edge(v1, v2, p)/area;
-                    const double w1 = edge(v2, v0, p)/area;
-                    const double w2 = edge(v0, v1, p)/area;
+                    const double w0 = EdgeFunc<double>(v1, v2, p)/area;
+                    const double w1 = EdgeFunc<double>(v2, v0, p)/area;
+                    const double w2 = EdgeFunc<double>(v0, v1, p)/area;
 
                     // If inside triangle
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
@@ -516,13 +516,13 @@ namespace {
 inline void Render::Draw(const RenderCmdInfo& _cmd_info) {
     switch (_cmd_info.uniform_->sType) {
         case ShaderName::PointShader:
-            DrawPointShader(_cmd_info);
+            RenderImpl::DrawPointShader(_cmd_info);
             break;
         case ShaderName::LineShader:
-            DrawTriangleLineShader(_cmd_info);
+            RenderImpl::DrawTriangleLineShader(_cmd_info);
             break;
         case ShaderName::RasterShader:
-            DrawRasterShader(_cmd_info);
+            RenderImpl::DrawRasterShader(_cmd_info);
             break;
         case ShaderName::Count:
             // Not implemented
