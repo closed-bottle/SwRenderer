@@ -35,15 +35,17 @@ without any hardware acceleration.
 
  Before/After noted below means before any optimization/algorithm implementation and after.
  Any implementation applied on "after" build will be noted next to the scene description.
+ Without mentioning, these performance metrics are captured in Windows, g++.
 
   - Scene #1 rendered in 3000*2500, 3 channels.
   - Scene #2 rendered in 8192*8192, 3 channels.
     - Attached scene is scale downed to 2048*2048.
+  - Scene #3 rendered in 4096*4096, 3 channels.
 
-Render | ![Alt text](media/suzanne_wireframe.png "Images") | ![Alt text](media/2cc524ed.png "Images")          |
---- |---------------------------------------------------|---------------------------------------------------|
-Before | 6.163932s                                         | 0.7941572s                                        |
-After | 0.05273832s(More than 100x faster)                | 0.7359066s(7%, without SIMD. 0.7408656s for SIMD) |
+| Render | ![Alt text](media/suzanne_wireframe.png "Images") | ![Alt text](media/2cc524ed.png "Images")          | ![Depth test](media/depth_test.png "Images") |
+|--------|---------------------------------------------------|---------------------------------------------------|----------------------------------------------|
+| Before | 6.163932s                                         | 0.7941572s                                        | 0.4022528s                                   |
+| After  | 0.05273832s(More than 100x faster)                | 0.7359066s(7%, without SIMD. 0.7408656s for SIMD) |                                              |
 ### Credits
  The function "plotLine" adapted from :
  > "A Rasterizing Algorithm for Drawing Curves"
