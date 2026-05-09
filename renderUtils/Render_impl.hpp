@@ -342,7 +342,272 @@ namespace RenderImpl{
 
     inline void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
 #ifdef USE_SIMD
+        auto& vertex_buffer = _cmd_info.vertex_buffer_;
+        auto& index_buffer = _cmd_info.index_buffer_;
+        const auto& uniform = dynamic_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
+        auto& view_port = _cmd_info.view_port_;
+        Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
+
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
+        const auto raster_alloc_size
+            = sizeof(Lamp::Vec4f) * (vertex_buffer->alloc_count_ + SIMD_REGISTER_WIDTH);
+        auto raster_alloc = Memory(raster_alloc_size);
+        auto raster_buffer = raster_alloc.Data();
+
+        const uint64_t offset = SIMD_REGISTER_WIDTH - reinterpret_cast<uint64_t>(raster_buffer) % SIMD_REGISTER_WIDTH;
+        auto raster_data = &raster_buffer[offset];
+
+        auto& color_target = _cmd_info.render_info_->_color_att->image_;
+        auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
+
+        const int left = static_cast<int>(view_port->x);
+        const int top  = static_cast<int>(view_port->y);
+        const auto width = static_cast<uint32_t>(view_port->width);
+        const auto height = static_cast<uint32_t>(view_port->height);
+        alignas(SIMD_REGISTER_WIDTH) const float ws[8] = { 1, 1, 1, 1, 1, 1, 1, 1};
+
+        if (_cmd_info.render_info_->_color_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
+            const int x = static_cast<int>(view_port->x);
+            const int y = static_cast<int>(view_port->y);
+            const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
+
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+                    void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                                + (color_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
+                                * color_target.Stride();
+
+                    memcpy(color_ptr, clear_color, color_target.Stride());
+                }
+            }
+        }
+
+        if (_cmd_info.render_info_->_depth_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
+            const int x = static_cast<int>(view_port->x);
+            const int y = static_cast<int>(view_port->y);
+            const auto& clear_depth = _cmd_info.render_info_->_color_att->clear_val_;
+
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+                    void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+                                + (depth_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
+                                * depth_target.Stride();
+
+                    memcpy(depth_ptr, clear_depth, depth_target.Stride());
+                }
+            }
+        }
+
+        uint32_t start = 0;
+        uint32_t end = 0;
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        }
+
+        uint32_t count = index_buffer->count_ ? end - start + 1 : 0;
+        count -= count % SIMD_VECTOR_FETCH_PADDING;
+        // Exclude last 8 elements, so we don't use padded value.
+
+        Lamp::Mat4f merged_mat = viewport_transform * uniform->mvp;
+
+        __m256 merged[16] = {
+            _mm256_broadcast_ss(&merged_mat.c0.x),
+            _mm256_broadcast_ss(&merged_mat.c1.x),
+            _mm256_broadcast_ss(&merged_mat.c2.x),
+            _mm256_broadcast_ss(&merged_mat.c3.x),
+            _mm256_broadcast_ss(&merged_mat.c0.y),
+            _mm256_broadcast_ss(&merged_mat.c1.y),
+            _mm256_broadcast_ss(&merged_mat.c2.y),
+            _mm256_broadcast_ss(&merged_mat.c3.y),
+            _mm256_broadcast_ss(&merged_mat.c0.z),
+            _mm256_broadcast_ss(&merged_mat.c1.z),
+            _mm256_broadcast_ss(&merged_mat.c2.z),
+            _mm256_broadcast_ss(&merged_mat.c3.z),
+            _mm256_broadcast_ss(&merged_mat.c0.w),
+            _mm256_broadcast_ss(&merged_mat.c1.w),
+            _mm256_broadcast_ss(&merged_mat.c2.w),
+            _mm256_broadcast_ss(&merged_mat.c3.w)
+        };
+
+        auto* in_x
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data());
+        auto* in_y
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
+                + 1 *_cmd_info.vertex_buffer_->alloc_count_;
+        auto* in_z
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
+                + 2 *_cmd_info.vertex_buffer_->alloc_count_;
+        __m256 ww = _mm256_load_ps(ws);
+
+        uint64_t out_itr = 0;
+        for (uint64_t i = start; i < end && out_itr < count; i += 8, out_itr += 8) {
+            // Need more test on alignment, only tested with 2 meshes.
+            // Aligned with SIMD_REGISTER_WIDTH.
+            __m256 xx = _mm256_load_ps(&in_x[i]);
+            __m256 yy = _mm256_load_ps(&in_y[i]);
+            __m256 zz = _mm256_load_ps(&in_z[i]);
+
+            alignas(32) __m256 out_x;
+            alignas(32) __m256 out_y;
+            alignas(32) __m256 out_z;
+
+            out_x = _mm256_mul_ps(merged[0], xx);
+            out_x = _mm256_fmadd_ps(merged[1], yy, out_x);
+            out_x = _mm256_fmadd_ps(merged[2], zz, out_x);
+            out_x = _mm256_fmadd_ps(merged[3], ww, out_x);
+
+            out_y = _mm256_mul_ps(merged[4], xx);
+            out_y = _mm256_fmadd_ps(merged[5], yy, out_y);
+            out_y = _mm256_fmadd_ps(merged[6], zz, out_y);
+            out_y = _mm256_fmadd_ps(merged[7], ww, out_y);
+
+            out_z = _mm256_mul_ps(merged[8], xx);
+            out_z = _mm256_fmadd_ps(merged[9], yy, out_z);
+            out_z = _mm256_fmadd_ps(merged[10], zz, out_z);
+            out_z = _mm256_fmadd_ps(merged[11], ww, out_z);
+
+            __m256 clip_w;
+            clip_w = _mm256_mul_ps(merged[12], xx);
+            clip_w = _mm256_fmadd_ps(merged[13], yy, clip_w);
+            clip_w = _mm256_fmadd_ps(merged[14], zz, clip_w);
+            clip_w = _mm256_fmadd_ps(merged[15], ww, clip_w);
+
+            out_x = _mm256_div_ps(out_x, clip_w);
+            out_y = _mm256_div_ps(out_y, clip_w);
+            out_z = _mm256_div_ps(out_z, clip_w);
+
+            // Reused m256 full of 1s.
+            out_z = _mm256_div_ps(ww, out_z);
+
+
+            memcpy(&raster_data[sizeof(float) * out_itr], &out_x, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer->alloc_count_) + out_itr)], &out_y, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer->alloc_count_) + out_itr)], &out_z, sizeof(__m256));
+        }
+
+        for (; out_itr < vertex_buffer->count_; ++out_itr) {
+            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(in_x[out_itr], in_y[out_itr], in_z[out_itr], 1);
+            v0 = uniform->mvp * v0;
+            ClipToNdc(v0);
+            NdcToWindow(viewport_transform, v0);
+            v0.z = 1.0f / v0.z;
+
+            memcpy(&raster_data[sizeof(float) * out_itr], &v0.x, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (1* vertex_buffer->alloc_count_ + out_itr)], &v0.y, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (2* vertex_buffer->alloc_count_ + out_itr)], &v0.z, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (3* vertex_buffer->alloc_count_ + out_itr)], &v0.w, sizeof(float));
+        }
+
+        auto i_d = static_cast<uint8_t*>(index_buffer->data_);
+
+        uint8_t* xs = raster_data;
+        uint8_t* ys = &raster_data[sizeof(float) * (1 * vertex_buffer->alloc_count_)];
+        uint8_t* zs = &raster_data[sizeof(float) * (2 * vertex_buffer->alloc_count_)];
+        uint8_t* w = &raster_data[sizeof(float) * (3 * vertex_buffer->alloc_count_)];
+
+        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+            uint32_t i0, i1, i2;
+
+            memcpy(&i0, &i_d[sizeof(uint32_t) * (i+0)], sizeof(uint32_t));
+            memcpy(&i1, &i_d[sizeof(uint32_t) * (i+1)], sizeof(uint32_t));
+            memcpy(&i2, &i_d[sizeof(uint32_t) * (i+2)], sizeof(uint32_t));
+
+            alignas(16) Lamp::Vec4f v0, v1, v2;
+            memcpy(&v0.x, &xs[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.y, &ys[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.z, &zs[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.w, &w[sizeof(float) * i0], sizeof(float));
+
+            memcpy(&v1.x, &xs[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.y, &ys[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.z, &zs[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.w, &w[sizeof(float) * i1], sizeof(float));
+
+            memcpy(&v2.x, &xs[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.y, &ys[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.z, &zs[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.w, &w[sizeof(float) * i2], sizeof(float));
+
+
+            AABB2i aabb;
+            aabb.min = {
+                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
+                static_cast<int>(std::min(std::min(v0.y, v1.y), v2.y))
+            };
+            aabb.max = {
+                static_cast<int>(std::max(std::max(v0.x, v1.x), v2.x)) + 1,
+                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
+            };
+
+            // Cross product == Area of parallelogram made with the area of triangle * 2.
+            // Note that this edge function basically does pseudo-cross product.
+            double area;
+            area = EdgeFunc<double>(v0, v1, v2);
+
+            for (int j = aabb.min.y; j < aabb.max.y; ++j) {
+                for (int k = aabb.min.x; k < aabb.max.x; ++k) {
+                    Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
+
+                    // There are some reference about barycentric coordinate in page 479.
+                    // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
+                    const double w0 = EdgeFunc<double>(v1, v2, p)/area;
+                    const double w1 = EdgeFunc<double>(v2, v0, p)/area;
+                    const double w2 = EdgeFunc<double>(v0, v1, p)/area;
+
+                    // If inside triangle
+                    if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                        if (k >= left && k < left + width && j >= top && j < top + height) {
+                            void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+                            + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                            * depth_target.Stride();
+                            float depth;
+                            memcpy(&depth, depth_ptr, sizeof(float));
+
+                            double d0 = v0.z;
+                            double d1 = v1.z;
+                            double d2 = v2.z;
+
+                            // Imitating vertex color attribute.
+                            double red   = 1.0 * d0;
+                            double green = 1.0 * d1;
+                            double blue  = 1.0 * d2;
+
+                            // It should be in a form of fma, but these lines are simplified
+                            // Because it is blue, green and red.
+
+                            double p_interp[3] = {};
+                            p_interp[0] = w0 * blue;
+                            p_interp[1] = w1 * green;
+                            p_interp[2] = w2 * red;
+                            double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
+
+                            uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
+                                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
+                                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
+
+                            // Depth test.
+                            // Potentially add depth compare op to pipeline.
+                            // There are no near/far plane clipping yet.
+
+                            const double d32_depth = z_interp;
+
+                            if (depth < d32_depth) {
+                                void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                                    + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                                    * color_target.Stride();
+
+                                memcpy(color_ptr, color, color_target.Stride());
+
+                                const auto f_depth = static_cast<float>(d32_depth);
+                                memcpy(depth_ptr, &f_depth, depth_target.Stride());
+                            }
+                        }
+                    }
+                }
+            }
+        }
 #else
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
         auto& index_buffer = _cmd_info.index_buffer_;
