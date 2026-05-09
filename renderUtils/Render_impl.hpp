@@ -480,18 +480,24 @@ namespace RenderImpl{
                             double green = 1.0 * d1;
                             double blue  = 1.0 * d2;
 
+                            // It should be in a form of fma, but these lines are simplified
+                            // Because it is blue, green and red.
 
-                            double perspect = 1.0 / (w0 * d0 + w1 * d1 + w2 * d2);
+                            double p_interp[3] = {};
+                            p_interp[0] = w0 * blue;
+                            p_interp[1] = w1 * green;
+                            p_interp[2] = w2 * red;
+                            double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
 
-                            uint8_t color[] = {static_cast<uint8_t>(255.0 * red   * w0 * perspect),
-                                               static_cast<uint8_t>(255.0 * green * w1 * perspect),
-                                               static_cast<uint8_t>(255.0 * blue  * w2 * perspect)};
+                            uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
+                                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
+                                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
 
                             // Depth test.
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
 
-                            const double d32_depth = 1.0 - perspect;
+                            const double d32_depth = z_interp;
 
                             if (depth < d32_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
