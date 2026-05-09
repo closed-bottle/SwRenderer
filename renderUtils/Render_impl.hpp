@@ -443,7 +443,7 @@ namespace RenderImpl{
                 static_cast<int>(std::max(std::max(v0.x, v1.x), v2.x)) + 1,
                 static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
             };
-            
+
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
             double area;
@@ -474,22 +474,24 @@ namespace RenderImpl{
                             memcpy(&d0, &depth_data[i0 * sizeof(double)], sizeof(double));
                             memcpy(&d1, &depth_data[i1 * sizeof(double)], sizeof(double));
                             memcpy(&d2, &depth_data[i2 * sizeof(double)], sizeof(double));
-                            d0 = 1.0 / d0;
-                            d1 = 1.0 / d1;
-                            d2 = 1.0 / d2;
+
+                            // Imitating vertex color attribute.
+                            double red   = 1.0 * d0;
+                            double green = 1.0 * d1;
+                            double blue  = 1.0 * d2;
 
 
+                            double perspect = 1.0 / (w0 * d0 + w1 * d1 + w2 * d2);
 
-                            double perspective_correct = 1.0 / (w0 * d0 + w1 * d1 + w2 * d2);
-                            uint8_t color[] = {static_cast<uint8_t>(255 * w0),
-                                               static_cast<uint8_t>(255 * w1),
-                                               static_cast<uint8_t>(255 * w2)};
+                            uint8_t color[] = {static_cast<uint8_t>(255.0 * red   * w0 * perspect),
+                                               static_cast<uint8_t>(255.0 * green * w1 * perspect),
+                                               static_cast<uint8_t>(255.0 * blue  * w2 * perspect)};
 
                             // Depth test.
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
 
-                            const double d32_depth = perspective_correct;
+                            const double d32_depth = 1.0 - perspect;
 
                             if (depth < d32_depth) {
                                 void* color_ptr = static_cast<uint8_t *>(color_target.Data())
