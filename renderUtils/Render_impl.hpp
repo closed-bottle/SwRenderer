@@ -552,12 +552,20 @@ namespace RenderImpl{
 
                     // There are some reference about barycentric coordinate in page 479.
                     // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
-                    const double w0 = EdgeFunc<double>(v1, v2, p)/area;
-                    const double w1 = EdgeFunc<double>(v2, v0, p)/area;
-                    const double w2 = EdgeFunc<double>(v0, v1, p)/area;
+                    auto w0 = EdgeFunc<double>(v1, v2, p);
+                    auto w1 = EdgeFunc<double>(v2, v0, p);
+                    auto w2 = EdgeFunc<double>(v0, v1, p);
 
-                    // If inside triangle
-                    if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+                    const bool is_w0_p = w0 >= 0;
+                    const bool is_w1_p = w1 >= 0;
+                    const bool is_w2_p = w2 >= 0;
+                    const bool is_area_p = area >= 0;
+                    bool is_inside;
+                    is_inside = is_w0_p == is_w1_p;
+                    is_inside &= is_w1_p == is_w2_p;
+                    is_inside &= is_w2_p == is_area_p;
+                    // If 'p' is inside the tri
+                    if (is_inside) {
                         if (k >= left && k < left + width && j >= top && j < top + height) {
                             void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
                             + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
@@ -565,6 +573,9 @@ namespace RenderImpl{
                             float depth;
                             memcpy(&depth, depth_ptr, sizeof(float));
 
+                            w0 /= area;
+                            w1 /= area;
+                            w2 /= area;
                             double d0 = v0.z;
                             double d1 = v1.z;
                             double d2 = v2.z;
