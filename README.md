@@ -39,13 +39,15 @@ without any hardware acceleration.
 
   - Scene #1 rendered in 3000*2500, 3 channels.
   - Scene #2 rendered in 8192*8192, 3 channels.
+    - Demonstrate multiple viewport render to the same target.
     - Attached scene is scale downed to 2048*2048.
   - Scene #3 rendered in 4096*4096, 3 channels.
+    - Demonstrate depth precision. If precision is high enough, there should be a circle fits almost perfectly to the center square.
 
 | Render | ![Alt text](media/suzanne_wireframe.png "Images") | ![Alt text](media/2cc524ed.png "Images")          | ![Depth test](media/depth_test.png "Images") |
 |--------|---------------------------------------------------|---------------------------------------------------|----------------------------------------------|
 | Before | 6.163932s                                         | 0.7941572s                                        | 0.4022528s                                   |
-| After  | 0.05273832s(More than 100x faster)                | 0.7359066s(7%, without SIMD. 0.7408656s for SIMD) |                                              |
+| After  | 0.05273832s(More than 100x faster)                | 0.7359066s(7%, without SIMD. 0.7408656s for SIMD) | 0.3891932s (SIMD)                            |
 ### Credits
  The function "plotLine" adapted from :
  > "A Rasterizing Algorithm for Drawing Curves"
