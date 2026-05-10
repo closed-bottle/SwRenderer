@@ -349,7 +349,6 @@ namespace RenderImpl{
         auto& view_port = _cmd_info.view_port_;
         Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
-        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
         const auto raster_alloc_size
             = sizeof(Lamp::Vec4f) * (vertex_buffer->alloc_count_ + SIMD_REGISTER_WIDTH);
         auto raster_alloc = Memory(raster_alloc_size);
@@ -406,10 +405,7 @@ namespace RenderImpl{
             end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
         }
 
-        uint32_t count = index_buffer->count_ ? end - start + 1 : 0;
-        count -= count % SIMD_VECTOR_FETCH_PADDING;
-        // Exclude last 8 elements, so we don't use padded value.
-
+        uint32_t count = index_buffer->count_ ? end - start : 0;
         Lamp::Mat4f merged_mat = viewport_transform * uniform->mvp;
 
         __m256 merged[16] = {
@@ -486,26 +482,11 @@ namespace RenderImpl{
             memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer->alloc_count_) + out_itr)], &out_y, sizeof(__m256));
             memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer->alloc_count_) + out_itr)], &out_z, sizeof(__m256));
         }
-
-        for (; out_itr < vertex_buffer->count_; ++out_itr) {
-            alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(in_x[out_itr], in_y[out_itr], in_z[out_itr], 1);
-            v0 = uniform->mvp * v0;
-            ClipToNdc(v0);
-            NdcToWindow(viewport_transform, v0);
-            v0.z = 1.0f / v0.z;
-
-            memcpy(&raster_data[sizeof(float) * out_itr], &v0.x, sizeof(float));
-            memcpy(&raster_data[sizeof(float) * (1* vertex_buffer->alloc_count_ + out_itr)], &v0.y, sizeof(float));
-            memcpy(&raster_data[sizeof(float) * (2* vertex_buffer->alloc_count_ + out_itr)], &v0.z, sizeof(float));
-            memcpy(&raster_data[sizeof(float) * (3* vertex_buffer->alloc_count_ + out_itr)], &v0.w, sizeof(float));
-        }
-
         auto i_d = static_cast<uint8_t*>(index_buffer->data_);
 
         uint8_t* xs = raster_data;
         uint8_t* ys = &raster_data[sizeof(float) * (1 * vertex_buffer->alloc_count_)];
         uint8_t* zs = &raster_data[sizeof(float) * (2 * vertex_buffer->alloc_count_)];
-        uint8_t* w = &raster_data[sizeof(float) * (3 * vertex_buffer->alloc_count_)];
 
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             uint32_t i0, i1, i2;
@@ -518,17 +499,17 @@ namespace RenderImpl{
             memcpy(&v0.x, &xs[sizeof(float) * i0], sizeof(float));
             memcpy(&v0.y, &ys[sizeof(float) * i0], sizeof(float));
             memcpy(&v0.z, &zs[sizeof(float) * i0], sizeof(float));
-            memcpy(&v0.w, &w[sizeof(float) * i0], sizeof(float));
+            memcpy(&v0.w, &ws[0], sizeof(float));
 
             memcpy(&v1.x, &xs[sizeof(float) * i1], sizeof(float));
             memcpy(&v1.y, &ys[sizeof(float) * i1], sizeof(float));
             memcpy(&v1.z, &zs[sizeof(float) * i1], sizeof(float));
-            memcpy(&v1.w, &w[sizeof(float) * i1], sizeof(float));
+            memcpy(&v1.w, &ws[0], sizeof(float));
 
             memcpy(&v2.x, &xs[sizeof(float) * i2], sizeof(float));
             memcpy(&v2.y, &ys[sizeof(float) * i2], sizeof(float));
             memcpy(&v2.z, &zs[sizeof(float) * i2], sizeof(float));
-            memcpy(&v2.w, &w[sizeof(float) * i2], sizeof(float));
+            memcpy(&v2.w, &ws[0], sizeof(float));
 
 
             AABB2i aabb;
@@ -567,7 +548,7 @@ namespace RenderImpl{
                     // If 'p' is inside the tri
                     if (is_inside) {
                         if (k >= left && k < left + width && j >= top && j < top + height) {
-                            void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+                            auto* depth_ptr = (depth_target.Data())
                             + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                             * depth_target.Stride();
                             float depth;
@@ -605,7 +586,7 @@ namespace RenderImpl{
                             const double d32_depth = z_interp;
 
                             if (depth < d32_depth) {
-                                void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                                auto* color_ptr = (color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
 

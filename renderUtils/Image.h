@@ -44,7 +44,7 @@ public:
     uint32_t Height() const { return height_;}
     uint32_t NPixels() const { return n_pixels_;}
     uint8_t* ByteData() const { return mem_.Data(); }
-    void* Data() const { return (mem_.Data() + offset_); }
+    uint8_t* Data() const { return (mem_.Data() + offset_); }
 
     size_t SizeInByte() const { return size_in_byte_; }
 
