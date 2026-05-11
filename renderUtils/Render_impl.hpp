@@ -1,4 +1,5 @@
-﻿#include "Render.h"
+﻿#include "Pipeline.h"
+#include "Render.h"
 #include "RenderCmd.h"
 
 
@@ -668,6 +669,20 @@ namespace RenderImpl{
             alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
             alignas(16) Lamp::Vec4f v2 = new_vertices[i2];
 
+            double area;
+            area = EdgeFunc<double>(v0, v1, v2);
+            // Back face culling
+#if 1
+            if (_cmd_info.pipeline_->front_face_ == WindingOrder::CCW) {
+                if (area < 0)
+                    continue;
+            }
+            else {
+                if (area > 0)
+                    continue;
+            }
+#endif
+
             AABB2i aabb;
             aabb.min = {
                 static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
@@ -680,8 +695,7 @@ namespace RenderImpl{
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
-            double area;
-            area = EdgeFunc<double>(v0, v1, v2);
+
 
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
