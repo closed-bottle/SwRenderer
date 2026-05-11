@@ -524,6 +524,17 @@ namespace RenderImpl{
                 static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
             };
 
+            aabb.min.x = std::max(aabb.min.x, left);
+            aabb.min.y = std::max(aabb.min.y, top);
+
+            aabb.max.x
+                = std::min(aabb.max.x, static_cast<int>(left + width) -1);
+            aabb.max.y
+                = std::min(aabb.max.y, static_cast<int>(top + height) -1);
+
+            LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
+            LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
+
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
             double area;
@@ -548,53 +559,51 @@ namespace RenderImpl{
                     is_inside &= is_w2_p == is_area_p;
                     // If 'p' is inside the tri
                     if (is_inside) {
-                        if (k >= left && k < left + width && j >= top && j < top + height) {
-                            auto* depth_ptr = (depth_target.Data())
-                            + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                            * depth_target.Stride();
-                            float depth;
-                            memcpy(&depth, depth_ptr, sizeof(float));
+                        auto* depth_ptr = (depth_target.Data())
+                        + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                        * depth_target.Stride();
+                        float depth;
+                        memcpy(&depth, depth_ptr, sizeof(float));
 
-                            w0 /= area;
-                            w1 /= area;
-                            w2 /= area;
-                            double d0 = v0.z;
-                            double d1 = v1.z;
-                            double d2 = v2.z;
+                        w0 /= area;
+                        w1 /= area;
+                        w2 /= area;
+                        double d0 = v0.z;
+                        double d1 = v1.z;
+                        double d2 = v2.z;
 
-                            // Imitating vertex color attribute.
-                            double red   = 1.0 * d0;
-                            double green = 1.0 * d1;
-                            double blue  = 1.0 * d2;
+                        // Imitating vertex color attribute.
+                        double red   = 1.0 * d0;
+                        double green = 1.0 * d1;
+                        double blue  = 1.0 * d2;
 
-                            // It should be in a form of fma, but these lines are simplified
-                            // Because it is blue, green and red.
+                        // It should be in a form of fma, but these lines are simplified
+                        // Because it is blue, green and red.
 
-                            double p_interp[3] = {};
-                            p_interp[0] = w0 * blue;
-                            p_interp[1] = w1 * green;
-                            p_interp[2] = w2 * red;
-                            double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
+                        double p_interp[3] = {};
+                        p_interp[0] = w0 * blue;
+                        p_interp[1] = w1 * green;
+                        p_interp[2] = w2 * red;
+                        double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
 
-                            uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
-                                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
-                                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
+                        uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
+                                           static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
+                                           static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
 
-                            // Depth test.
-                            // Potentially add depth compare op to pipeline.
-                            // There are no near/far plane clipping yet.
+                        // Depth test.
+                        // Potentially add depth compare op to pipeline.
+                        // There are no near/far plane clipping yet.
 
-                            const double double_fp_depth = z_interp;
+                        const double double_fp_depth = z_interp;
 
-                            if (depth < double_fp_depth) {
-                                auto* color_ptr = (color_target.Data())
-                                    + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                                    * color_target.Stride();
-                                memcpy(color_ptr, color, color_target.Stride());
+                        if (depth < double_fp_depth) {
+                            auto* color_ptr = (color_target.Data())
+                                + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                                * color_target.Stride();
+                            memcpy(color_ptr, color, color_target.Stride());
 
-                                const auto f_depth = static_cast<float>(double_fp_depth);
-                                memcpy(depth_ptr, &f_depth, depth_target.Stride());
-                            }
+                            const auto f_depth = static_cast<float>(double_fp_depth);
+                            memcpy(depth_ptr, &f_depth, depth_target.Stride());
                         }
                     }
                 }
@@ -673,6 +682,16 @@ namespace RenderImpl{
                 static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
             };
 
+            aabb.min.x = std::max(aabb.min.x, x);
+            aabb.min.y = std::max(aabb.min.y, y);
+
+            aabb.max.x = std::min(aabb.max.x, static_cast<int>(x + width) -1);
+            aabb.max.y = std::min(aabb.max.y, static_cast<int>(y + height) -1);
+
+            LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
+            LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
+
+
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
 
@@ -689,50 +708,48 @@ namespace RenderImpl{
 
                     // If inside triangle
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        if (k >= x && k < x + width && j >= y && j < y + height) {
-                            void* depth_ptr = depth_target.Data()
-                            + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                            * depth_target.Stride();
-                            float depth;
-                            memcpy(&depth, depth_ptr, sizeof(float));
+                        void* depth_ptr = depth_target.Data()
+                        + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                        * depth_target.Stride();
+                        float depth;
+                        memcpy(&depth, depth_ptr, sizeof(float));
 
-                            double d0 = v0.z;
-                            double d1 = v1.z;
-                            double d2 = v2.z;
+                        double d0 = v0.z;
+                        double d1 = v1.z;
+                        double d2 = v2.z;
 
-                            // Imitating vertex color attribute.
-                            double red   = 1.0 * d0;
-                            double green = 1.0 * d1;
-                            double blue  = 1.0 * d2;
+                        // Imitating vertex color attribute.
+                        double red   = 1.0 * d0;
+                        double green = 1.0 * d1;
+                        double blue  = 1.0 * d2;
 
-                            // It should be in a form of fma, but these lines are simplified
-                            // Because it is blue, green and red.
+                        // It should be in a form of fma, but these lines are simplified
+                        // Because it is blue, green and red.
 
-                            double p_interp[3] = {};
-                            p_interp[0] = w0 * blue;
-                            p_interp[1] = w1 * green;
-                            p_interp[2] = w2 * red;
-                            double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
+                        double p_interp[3] = {};
+                        p_interp[0] = w0 * blue;
+                        p_interp[1] = w1 * green;
+                        p_interp[2] = w2 * red;
+                        double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
 
-                            uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
-                                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
-                                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
+                        uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
+                                           static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
+                                           static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
 
-                            // Depth test.
-                            // Potentially add depth compare op to pipeline.
-                            // There are no near/far plane clipping yet.
+                        // Depth test.
+                        // Potentially add depth compare op to pipeline.
+                        // There are no near/far plane clipping yet.
 
-                            const double double_fp_depth = z_interp;
-                            if (depth < double_fp_depth) {
-                                void* color_ptr = color_target.Data()
-                                    + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                                    * color_target.Stride();
+                        const double double_fp_depth = z_interp;
+                        if (depth < double_fp_depth) {
+                            void* color_ptr = color_target.Data()
+                                + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                                * color_target.Stride();
 
-                                memcpy(color_ptr, color, color_target.Stride());
+                            memcpy(color_ptr, color, color_target.Stride());
 
-                                const auto f_depth = static_cast<float>(double_fp_depth);
-                                memcpy(depth_ptr, &f_depth, depth_target.Stride());
-                            }
+                            const auto f_depth = static_cast<float>(double_fp_depth);
+                            memcpy(depth_ptr, &f_depth, depth_target.Stride());
                         }
                     }
                 }
