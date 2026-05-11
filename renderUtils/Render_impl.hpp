@@ -59,6 +59,30 @@ namespace RenderImpl{
         return a * d - b * c;
     }
 
+    inline void LoadOp(const AttInfo* const _att, const Viewport* _viewport,
+                       const uint32_t& _width, const uint32_t& _height) {
+        auto& target = _att->image_;
+
+        switch (_att->load_op_) {
+            case LoadOp::LOAD_OP_CLEAR:
+                const int x = static_cast<int>(_viewport->x);
+                const int y = static_cast<int>(_viewport->y);
+                const auto& clear_color = _att->clear_val_;
+
+                for (int i = 0; i < _height; ++i) {
+                    for (int j = 0; j < _width; ++j) {
+                        void* color_ptr = target.Data()
+                                    + (target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
+                                    * target.Stride();
+
+                        memcpy(color_ptr, clear_color, target.Stride());
+                    }
+                }
+
+                break;
+        }
+    }
+
     // Note that it is not the proper algorithm to plot points on the screen,
     // it is unstable due to the nature direct casting.
     // Only for quick demonstration.
@@ -366,37 +390,8 @@ namespace RenderImpl{
         const auto height = static_cast<uint32_t>(view_port->height);
         alignas(SIMD_REGISTER_WIDTH) const float ws[8] = { 1, 1, 1, 1, 1, 1, 1, 1};
 
-        if (_cmd_info.render_info_->_color_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
-            const int x = static_cast<int>(view_port->x);
-            const int y = static_cast<int>(view_port->y);
-            const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
-
-            for (int i = 0; i < height; ++i) {
-                for (int j = 0; j < width; ++j) {
-                    void* color_ptr = color_target.Data()
-                                + (color_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
-                                * color_target.Stride();
-
-                    memcpy(color_ptr, clear_color, color_target.Stride());
-                }
-            }
-        }
-
-        if (_cmd_info.render_info_->_depth_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
-            const int x = static_cast<int>(view_port->x);
-            const int y = static_cast<int>(view_port->y);
-            const auto& clear_depth = _cmd_info.render_info_->_color_att->clear_val_;
-
-            for (int i = 0; i < height; ++i) {
-                for (int j = 0; j < width; ++j) {
-                    void* depth_ptr = depth_target.Data()
-                                + (depth_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
-                                * depth_target.Stride();
-
-                    memcpy(depth_ptr, clear_depth, depth_target.Stride());
-                }
-            }
-        }
+        LoadOp(_cmd_info.render_info_->_color_att, view_port, width, height);
+        LoadOp(_cmd_info.render_info_->_depth_att, view_port, width, height);
 
         uint32_t start = 0;
         uint32_t end = 0;
