@@ -380,6 +380,8 @@ namespace RenderImpl{
         const Lamp::Vec4f& _v1,
         const Lamp::Vec4f& _v2,
         const double& _area,
+        const float& _near,
+        const float& _far,
         const float& _depth,
         const Image& _color_target,
         const Image& _depth_target) {
@@ -416,6 +418,11 @@ namespace RenderImpl{
             // Note that I can skip depth test here because
             // I've already did early depth.
             const double double_fp_depth = z_interp;
+
+            // Clip near/far plane.
+            if (z_interp < _near || z_interp > _far)
+                return;
+
             if (_depth < double_fp_depth) {
                 void* color_ptr = _color_target.Data()
                 + (_color_target.Width()
@@ -753,6 +760,12 @@ namespace RenderImpl{
             LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
             LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
 
+            if (aabb_depth < view_port->near
+             || aabb_depth > view_port->far) {
+                continue;
+            }
+
+
             // Early depth test
             // A pass, clip anything closer than near plane.
             // if (aabb_depth < near)
@@ -766,7 +779,7 @@ namespace RenderImpl{
             // else if (aabb_depth > depth)
             //    clip
             // D pass, exclude any pixels that are further.
-            // else if (aabb_depth > pixel_depth)
+            // else if (actual depth > pixel_depth)
             //    clip
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
@@ -793,8 +806,9 @@ namespace RenderImpl{
                         continue;
                     }
 
-                    FillInTriangle(p,v0, v1, v2, area, depth,
-                                  color_target, depth_target);
+                    FillInTriangle(p,v0, v1, v2, area,
+                            view_port->near, view_port->far, depth,
+                            color_target, depth_target);
                 }
             }
         }
