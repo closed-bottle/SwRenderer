@@ -438,7 +438,7 @@ namespace RenderImpl{
         __m256 ww = _mm256_load_ps(ws);
 
         uint64_t out_itr = 0;
-        for (uint64_t i = start; i < end && out_itr < count; i += 8, out_itr += 8) {
+        for (uint64_t i = start; i <= end && out_itr <= count; i += 8, out_itr += 8) {
             // Need more test on alignment, only tested with 2 meshes.
             // Aligned with SIMD_REGISTER_WIDTH.
             __m256 xx = _mm256_load_ps(&in_x[i]);
@@ -526,7 +526,6 @@ namespace RenderImpl{
             // Note that this edge function basically does pseudo-cross product.
             double area;
             area = EdgeFunc<double>(v0, v1, v2);
-
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
                     Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
@@ -589,7 +588,6 @@ namespace RenderImpl{
                                 auto* color_ptr = (color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
-
                                 memcpy(color_ptr, color, color_target.Stride());
 
                                 const auto f_depth = static_cast<float>(d32_depth);
