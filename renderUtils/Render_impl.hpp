@@ -434,8 +434,6 @@ namespace RenderImpl{
 
         uint64_t out_itr = 0;
         for (uint64_t i = start; i <= end && out_itr <= count; i += 8, out_itr += 8) {
-            // Need more test on alignment, only tested with 2 meshes.
-            // Aligned with SIMD_REGISTER_WIDTH.
             __m256 xx = _mm256_load_ps(&in_x[i]);
             __m256 yy = _mm256_load_ps(&in_y[i]);
             __m256 zz = _mm256_load_ps(&in_z[i]);
@@ -577,15 +575,15 @@ namespace RenderImpl{
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
 
-                            const double d32_depth = z_interp;
+                            const double double_fp_depth = z_interp;
 
-                            if (depth < d32_depth) {
+                            if (depth < double_fp_depth) {
                                 auto* color_ptr = (color_target.Data())
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
                                 memcpy(color_ptr, color, color_target.Stride());
 
-                                const auto f_depth = static_cast<float>(d32_depth);
+                                const auto f_depth = static_cast<float>(double_fp_depth);
                                 memcpy(depth_ptr, &f_depth, depth_target.Stride());
                             }
                         }
@@ -610,14 +608,14 @@ namespace RenderImpl{
 
         const int x = static_cast<int>(view_port->x);
         const int y = static_cast<int>(view_port->y);
-        const auto uiwidth = static_cast<uint32_t>(view_port->width);
-        const auto uiheight = static_cast<uint32_t>(view_port->height);
+        const auto width = static_cast<uint32_t>(view_port->width);
+        const auto height = static_cast<uint32_t>(view_port->height);
 
         if (_cmd_info.render_info_->_color_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
             const auto& clear_color = _cmd_info.render_info_->_color_att->clear_val_;
-            for (int i = 0; i < uiheight; ++i) {
-                for (int j = 0; j < uiwidth; ++j) {
-                    void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+                    void* color_ptr = color_target.Data()
                                 + (color_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
                                 * color_target.Stride();
 
@@ -628,9 +626,9 @@ namespace RenderImpl{
 
         if (_cmd_info.render_info_->_depth_att->load_op_ == LoadOp::LOAD_OP_CLEAR) {
             const auto& clear_depth = _cmd_info.render_info_->_color_att->clear_val_;
-            for (int i = 0; i < uiheight; ++i) {
-                for (int j = 0; j < uiwidth; ++j) {
-                    void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+            for (int i = 0; i < height; ++i) {
+                for (int j = 0; j < width; ++j) {
+                    void* depth_ptr = depth_target.Data()
                                 + (depth_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
                                 * depth_target.Stride();
 
@@ -697,8 +695,8 @@ namespace RenderImpl{
 
                     // If inside triangle
                     if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        if (k >= x && k < x + uiwidth && j >= y && j < y + uiheight) {
-                            void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+                        if (k >= x && k < x + width && j >= y && j < y + height) {
+                            void* depth_ptr = depth_target.Data()
                             + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                             * depth_target.Stride();
                             float depth;
@@ -730,16 +728,15 @@ namespace RenderImpl{
                             // Potentially add depth compare op to pipeline.
                             // There are no near/far plane clipping yet.
 
-                            const double d32_depth = z_interp;
-
-                            if (depth < d32_depth) {
-                                void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                            const double double_fp_depth = z_interp;
+                            if (depth < double_fp_depth) {
+                                void* color_ptr = color_target.Data()
                                     + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
                                     * color_target.Stride();
 
                                 memcpy(color_ptr, color, color_target.Stride());
 
-                                const auto f_depth = static_cast<float>(d32_depth);
+                                const auto f_depth = static_cast<float>(double_fp_depth);
                                 memcpy(depth_ptr, &f_depth, depth_target.Stride());
                             }
                         }
