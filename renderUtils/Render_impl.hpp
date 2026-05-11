@@ -555,6 +555,9 @@ namespace RenderImpl{
         }
         auto i_d = static_cast<uint8_t*>(index_buffer->data_);
 
+        auto* backface_culling
+            = _cmd_info.pipeline_->front_face_ == WindingOrder::CCW ?
+                BackfaceCullCCW : BackfaceCullCW;
         uint8_t* xs = raster_data;
         uint8_t* ys = &raster_data[sizeof(float) * (1 * vertex_buffer->alloc_count_)];
         uint8_t* zs = &raster_data[sizeof(float) * (2 * vertex_buffer->alloc_count_)];
@@ -593,9 +596,9 @@ namespace RenderImpl{
                 static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
             };
 
+            float aabb_depth = std::min(std::min(v0.z, v1.z), v2.z);
             aabb.min.x = std::max(aabb.min.x, left);
             aabb.min.y = std::max(aabb.min.y, top);
-
             aabb.max.x
                 = std::min(aabb.max.x, static_cast<int>(left + width) -1);
             aabb.max.y
@@ -604,77 +607,41 @@ namespace RenderImpl{
             LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
             LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
 
+            // Near/far plane clipping
+            if (aabb_depth < view_port->near
+             || aabb_depth > view_port->far) {
+                continue;
+             }
+
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
             double area;
             area = EdgeFunc<double>(v0, v1, v2);
+            // Back face culling
+            if (!backface_culling(area))
+                continue;
+
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
                     Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
 
-                    // There are some reference about barycentric coordinate in page 479.
-                    // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
-                    auto w0 = EdgeFunc<double>(v1, v2, p);
-                    auto w1 = EdgeFunc<double>(v2, v0, p);
-                    auto w2 = EdgeFunc<double>(v0, v1, p);
+                    void* depth_ptr = depth_target.Data()
+                        + (depth_target.Width()
+                        * static_cast<uint32_t>(p.y)
+                        + static_cast<uint32_t>(p.x))
+                            * depth_target.Stride();
+                    float depth;
+                    memcpy(&depth, depth_ptr, sizeof(float));
 
-                    const bool is_w0_p = w0 >= 0;
-                    const bool is_w1_p = w1 >= 0;
-                    const bool is_w2_p = w2 >= 0;
-                    const bool is_area_p = area >= 0;
-                    bool is_inside;
-                    is_inside = is_w0_p == is_w1_p;
-                    is_inside &= is_w1_p == is_w2_p;
-                    is_inside &= is_w2_p == is_area_p;
-                    // If 'p' is inside the tri
-                    if (is_inside) {
-                        auto* depth_ptr = (depth_target.Data())
-                        + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                        * depth_target.Stride();
-                        float depth;
-                        memcpy(&depth, depth_ptr, sizeof(float));
-
-                        w0 /= area;
-                        w1 /= area;
-                        w2 /= area;
-                        double d0 = v0.z;
-                        double d1 = v1.z;
-                        double d2 = v2.z;
-
-                        // Imitating vertex color attribute.
-                        double red   = 1.0 * d0;
-                        double green = 1.0 * d1;
-                        double blue  = 1.0 * d2;
-
-                        // It should be in a form of fma, but these lines are simplified
-                        // Because it is blue, green and red.
-
-                        double p_interp[3] = {};
-                        p_interp[0] = w0 * blue;
-                        p_interp[1] = w1 * green;
-                        p_interp[2] = w2 * red;
-                        double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
-
-                        uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
-                                           static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
-                                           static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
-
-                        // Depth test.
-                        // Potentially add depth compare op to pipeline.
-                        // There are no near/far plane clipping yet.
-
-                        const double double_fp_depth = z_interp;
-
-                        if (depth < double_fp_depth) {
-                            auto* color_ptr = (color_target.Data())
-                                + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                                * color_target.Stride();
-                            memcpy(color_ptr, color, color_target.Stride());
-
-                            const auto f_depth = static_cast<float>(double_fp_depth);
-                            memcpy(depth_ptr, &f_depth, depth_target.Stride());
-                        }
+                    // TODO : Note that operator should be interchangeable
+                    // following the depth operations.
+                    // C early depth test
+                    if (aabb_depth < depth) {
+                        continue;
                     }
+                    FillInTriangle(p,v0, v1, v2, area,
+                                    view_port->near, view_port->far, depth,
+                                    color_target, depth_target);
                 }
             }
         }
