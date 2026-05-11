@@ -427,9 +427,10 @@ namespace RenderImpl{
 
                 memcpy(color_ptr, color, _color_target.Stride());
                 void* depth_ptr = _depth_target.Data()
-                + (_depth_target.Width()
-                    * static_cast<uint32_t>(_p.y)
-                    + static_cast<uint32_t>(_p.x));
+                                + (_depth_target.Width()
+                                * static_cast<uint32_t>(_p.y)
+                                + static_cast<uint32_t>(_p.x))
+                                    * _depth_target.Stride();
 
                 const auto f_depth = static_cast<float>(double_fp_depth);
                 memcpy(depth_ptr, &f_depth, _depth_target.Stride());
@@ -777,7 +778,7 @@ namespace RenderImpl{
                                   0, 0};
 
                     void* depth_ptr = depth_target.Data()
-                                + (depth_target.Width()
+                                    + (depth_target.Width()
                                     * static_cast<uint32_t>(p.y)
                                     + static_cast<uint32_t>(p.x))
                                         * depth_target.Stride();
@@ -788,8 +789,8 @@ namespace RenderImpl{
                     // TODO : Note that operator should be interchangeable
                     // following the depth operations.
                     // C early depth test
-                    if (aabb_depth < depth)
-                        continue;
+                    //if (aabb_depth < depth)
+                    //    continue;
 
                     FillInTriangle(p,v0, v1, v2, area, depth,
                                   color_target, depth_target);
