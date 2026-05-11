@@ -677,8 +677,8 @@ namespace RenderImpl{
                 if (area < 0)
                     continue;
             }
-            else {
-                if (area > 0)
+            else if (_cmd_info.pipeline_->front_face_ == WindingOrder::CW) {
+                if (area >= 0)
                     continue;
             }
 #endif
