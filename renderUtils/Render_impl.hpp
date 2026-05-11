@@ -4,9 +4,9 @@
 
 namespace RenderImpl{
 #ifdef USE_SIMD
-    void MatrixVectorMul(const __m128& _c0, const __m128& _c1, const __m128& _c2, const __m128& _c3,
-                         const float* _x, const float* _y, const float* _z, const float* _w,
-                         float* _out) {
+    inline void MatrixVectorMul(const __m128& _c0, const __m128& _c1, const __m128& _c2, const __m128& _c3,
+                                const float* _x, const float* _y, const float* _z, const float* _w,
+                                float* _out) {
         const __m128 vv0 = _mm_load_ps(_x);
         const __m128 vv1 = _mm_load_ps(_y);
         const __m128 vv2 = _mm_load_ps(_z);
@@ -27,15 +27,15 @@ namespace RenderImpl{
         return reinterpret_cast<const T*>(_data + _offset + (sizeof(T) * _i));
     }
 
-    void ClipToNdc(Lamp::Vec4f &_v) {
+    inline void ClipToNdc(Lamp::Vec4f &_v) {
         _v /= _v.w;
     }
 
-    void NdcToWindow(const Lamp::Mat4f &_viewport, Lamp::Vec4f &_v) {
+    inline void NdcToWindow(const Lamp::Mat4f &_viewport, Lamp::Vec4f &_v) {
         _v = _viewport * _v;
     }
 
-    Lamp::Mat4f ViewportTransform(const Viewport& _viewport) {
+    inline Lamp::Mat4f ViewportTransform(const Viewport& _viewport) {
         const float f_width  = _viewport.width;
         const float f_height = _viewport.height;
 
@@ -101,7 +101,7 @@ namespace RenderImpl{
     // Copyright (c) Alois Zingl
     // The code (function "plotLine") Licensed under the MIT License
 
-    void plotLine(const RenderCmdInfo& _cmd_info, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
+    inline void plotLine(const RenderCmdInfo& _cmd_info, const Lamp::Vec4f& _start, const Lamp::Vec4f& _end) {
         constexpr uint8_t color[] = {255, 255, 0};
         auto& render_target = _cmd_info.render_info_->_color_att->image_;
 
@@ -373,7 +373,7 @@ namespace RenderImpl{
 
             for (int i = 0; i < height; ++i) {
                 for (int j = 0; j < width; ++j) {
-                    void* color_ptr = static_cast<uint8_t *>(color_target.Data())
+                    void* color_ptr = color_target.Data()
                                 + (color_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
                                 * color_target.Stride();
 
@@ -389,7 +389,7 @@ namespace RenderImpl{
 
             for (int i = 0; i < height; ++i) {
                 for (int j = 0; j < width; ++j) {
-                    void* depth_ptr = static_cast<uint8_t *>(depth_target.Data())
+                    void* depth_ptr = depth_target.Data()
                                 + (depth_target.Width() * static_cast<uint32_t>(y + i) + static_cast<uint32_t>(x + j))
                                 * depth_target.Stride();
 
