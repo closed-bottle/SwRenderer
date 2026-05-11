@@ -630,17 +630,18 @@ namespace RenderImpl{
                         * static_cast<uint32_t>(p.y)
                         + static_cast<uint32_t>(p.x))
                             * depth_target.Stride();
-                    float depth;
-                    memcpy(&depth, depth_ptr, sizeof(float));
+                    float stored_depth;
+                    memcpy(&stored_depth, depth_ptr, sizeof(float));
 
                     // TODO : Note that operator should be interchangeable
                     // following the depth operations.
                     // C early depth test
-                    if (aabb_depth < depth) {
+                    if (aabb_depth < stored_depth) {
                         continue;
                     }
                     FillInTriangle(p,v0, v1, v2, area,
-                                    view_port->near, view_port->far, depth,
+                                    view_port->near, view_port->far,
+                                stored_depth,
                                     color_target, depth_target);
                 }
             }
@@ -762,19 +763,19 @@ namespace RenderImpl{
                                     * static_cast<uint32_t>(p.y)
                                     + static_cast<uint32_t>(p.x))
                                         * depth_target.Stride();
-                    float depth;
-                    memcpy(&depth, depth_ptr, sizeof(float));
+                    float stored_depth;
+                    memcpy(&stored_depth, depth_ptr, sizeof(float));
 
 
                     // TODO : Note that operator should be interchangeable
                     // following the depth operations.
                     // C early depth test
-                    if (aabb_depth < depth) {
+                    if (aabb_depth < stored_depth) {
                         continue;
                     }
 
                     FillInTriangle(p,v0, v1, v2, area,
-                            view_port->near, view_port->far, depth,
+                            view_port->near, view_port->far, stored_depth,
                             color_target, depth_target);
                 }
             }
