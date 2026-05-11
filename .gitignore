@@ -9,4 +9,7 @@
 /x64/Debug
 /fileIO/x64/Release
 /x64/Release
-*.tga
+/*.tga
+/*.mtl
+/*.obj
+/.idea
