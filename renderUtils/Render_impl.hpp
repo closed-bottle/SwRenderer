@@ -666,6 +666,16 @@ namespace RenderImpl{
         const auto width = static_cast<uint32_t>(view_port->width);
         const auto height = static_cast<uint32_t>(view_port->height);
 
+        constexpr uint16_t hi_z_width = 16;
+        constexpr uint16_t hi_z_height = 16;
+
+        LAMPASSERT(hi_z_width > 0,  "hi-z block should be bigger than 0");
+        LAMPASSERT(hi_z_height > 0, "hi-z block should be bigger than 0");
+
+        auto hi_z_alloc = Memory(hi_z_width * hi_z_height * sizeof(float));
+        auto hi_z_data = hi_z_alloc.Data();
+        memset(hi_z_data, 0, hi_z_width * hi_z_height * sizeof(float));
+
         LoadOp(_cmd_info.render_info_->_color_att, view_port, width, height);
         LoadOp(_cmd_info.render_info_->_depth_att, view_port, width, height);
 
@@ -757,6 +767,32 @@ namespace RenderImpl{
                     Lamp::Vec4f p{static_cast<float>(k),
                                   static_cast<float>(j),
                                   0, 0};
+                    // Tried to implement HI-Z, however it doesn't give any
+                    // meaningful performance gain.
+                    // I'm suspecting :
+                    // 1. Additional memory access.(twice)
+                    // 2. Additional comparison.
+                    // I can do it per AABB, but I was not able to decide
+                    // how to deal with triangle across the multiple
+                    // HI-Z tiles.
+                    /*
+                    float hi_z_map_y = static_cast<float>(j) / height;
+                    float hi_z_map_x = static_cast<float>(k) / width;
+
+                    int hi_z_y = hi_z_map_y * hi_z_height;
+                    int hi_z_x = hi_z_map_x * hi_z_width;
+
+                    void* hi_z_ptr = hi_z_data
+                                   + ((hi_z_width * hi_z_y)
+                                   + hi_z_x) * sizeof(float);
+                    float hi_z;
+                    memcpy(&hi_z, hi_z_ptr, sizeof(float));
+
+                    if (aabb_depth < hi_z) {
+                        memcpy(hi_z_ptr, &aabb_depth, sizeof(float));
+                        continue;
+                    }
+                    */
 
                     void* depth_ptr = depth_target.Data()
                                     + (depth_target.Width()

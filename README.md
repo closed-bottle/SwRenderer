@@ -19,12 +19,17 @@ Current build only supports simple line drawing without triangle filling.
 ![multiple render target](media/2cc524ed.png)
 
 ## Current state
-![depth error](media/depth_error.png)
 
-Currently, experiencing precision issue from vertex interpolation.
-Image above shows vertex interpolation. "White" pixels are failed depth test with epsilon less than 0.0001.
-It has much less precision than expected, I'm suspecting it is due to the multiple stacking floating point arithmetic 
-without any hardware acceleration.
+Tried to implement HI-Z, however it doesn't give any
+meaningful performance gain.
+I'm suspecting :
+1. Additional memory access.(twice)
+2. Additional comparison.
+3. Shader is not complex enough to mitigate overhead.
+
+I can do it per AABB, but I was not able to decide
+how to deal with triangle across the multiple
+HI-Z tiles.
 
 
 ### How to build
