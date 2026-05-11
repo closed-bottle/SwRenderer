@@ -375,28 +375,22 @@ namespace RenderImpl{
     }
 
 
-    inline void FillInTriangle(const float& _x, const float& _y,
+    inline void FillInTriangle(const Lamp::Vec4f& _p,
         const Lamp::Vec4f& _v0,
         const Lamp::Vec4f& _v1,
         const Lamp::Vec4f& _v2,
         const double& _area,
+        const float& _depth,
         const Image& _color_target,
         const Image& _depth_target) {
-        const Lamp::Vec4f p = {_x, _y, 0, 0};
         // There are some reference about barycentric coordinate in page 479.
         // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
-        const double w0 = EdgeFunc<double>(_v1, _v2, p)/_area;
-        const double w1 = EdgeFunc<double>(_v2, _v0, p)/_area;
-        const double w2 = EdgeFunc<double>(_v0, _v1, p)/_area;
+        const double w0 = EdgeFunc<double>(_v1, _v2, _p)/_area;
+        const double w1 = EdgeFunc<double>(_v2, _v0, _p)/_area;
+        const double w2 = EdgeFunc<double>(_v0, _v1, _p)/_area;
 
         // If inside triangle
         if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-            void* depth_ptr = _depth_target.Data()
-            + (_depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-            * _depth_target.Stride();
-            float depth;
-            memcpy(&depth, depth_ptr, sizeof(float));
-
             const double d0 = _v0.z;
             const double d1 = _v1.z;
             const double d2 = _v2.z;
@@ -424,12 +418,18 @@ namespace RenderImpl{
             // There are no near/far plane clipping yet.
 
             const double double_fp_depth = z_interp;
-            if (depth < double_fp_depth) {
+            if (_depth < double_fp_depth) {
                 void* color_ptr = _color_target.Data()
-                    + (_color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                    * _color_target.Stride();
+                    + (_color_target.Width()
+                        * static_cast<uint32_t>(_p.y)
+                        + static_cast<uint32_t>(_p.x))
+                            * _color_target.Stride();
 
                 memcpy(color_ptr, color, _color_target.Stride());
+                void* depth_ptr = _depth_target.Data()
+                + (_depth_target.Width()
+                    * static_cast<uint32_t>(_p.y)
+                    + static_cast<uint32_t>(_p.x));
 
                 const auto f_depth = static_cast<float>(double_fp_depth);
                 memcpy(depth_ptr, &f_depth, _depth_target.Stride());
@@ -745,6 +745,7 @@ namespace RenderImpl{
                 static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
             };
 
+            float aabb_depth = std::min(std::min(v0.z, v1.z), v2.z);
             aabb.min.x = std::max(aabb.min.x, x);
             aabb.min.y = std::max(aabb.min.y, y);
 
@@ -754,13 +755,43 @@ namespace RenderImpl{
             LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
             LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
 
+            // Early depth test
+            // A pass, clip anything closer than near plane.
+            // if (aabb_depth < near)
+            //    clip
+            //
+            // B pass, clip anything further than far plane.
+            // else if (aabb_depth > far)
+            //    clip
+            //
+            // C pass, exclude any triangle that are further.
+            // else if (aabb_depth > depth)
+            //    clip
+
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
-                    FillInTriangle(static_cast<float>(k),
-                                   static_cast<float>(j),
-                                     v0, v1, v2, area,
+                    Lamp::Vec4f p{static_cast<float>(k),
+                                  static_cast<float>(j),
+                                  0, 0};
+
+                    void* depth_ptr = depth_target.Data()
+                                + (depth_target.Width()
+                                    * static_cast<uint32_t>(p.y)
+                                    + static_cast<uint32_t>(p.x))
+                                        * depth_target.Stride();
+                    float depth;
+                    memcpy(&depth, depth_ptr, sizeof(float));
+
+
+                    // TODO : Note that operator should be interchangeable
+                    // following the depth operations.
+                    // C early depth test
+                    if (aabb_depth < depth)
+                        continue;
+
+                    FillInTriangle(p,v0, v1, v2, area, depth,
                                   color_target, depth_target);
                 }
             }
