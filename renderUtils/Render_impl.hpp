@@ -380,7 +380,6 @@ namespace RenderImpl{
         const Lamp::Vec4f& _v1,
         const Lamp::Vec4f& _v2,
         const double& _area,
-        const float& _depth,
         const Image& _color_target,
         const Image& _depth_target) {
         // There are some reference about barycentric coordinate in page 479.
@@ -413,28 +412,24 @@ namespace RenderImpl{
                                static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
                                static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
 
-            // Depth test.
-            // Potentially add depth compare op to pipeline.
-            // There are no near/far plane clipping yet.
-
+            // Note that I can skip depth test here because
+            // I've already did early depth.
             const double double_fp_depth = z_interp;
-            if (_depth < double_fp_depth) {
-                void* color_ptr = _color_target.Data()
-                    + (_color_target.Width()
-                        * static_cast<uint32_t>(_p.y)
-                        + static_cast<uint32_t>(_p.x))
-                            * _color_target.Stride();
+            void* color_ptr = _color_target.Data()
+                + (_color_target.Width()
+                    * static_cast<uint32_t>(_p.y)
+                    + static_cast<uint32_t>(_p.x))
+                        * _color_target.Stride();
 
-                memcpy(color_ptr, color, _color_target.Stride());
-                void* depth_ptr = _depth_target.Data()
-                                + (_depth_target.Width()
-                                * static_cast<uint32_t>(_p.y)
-                                + static_cast<uint32_t>(_p.x))
-                                    * _depth_target.Stride();
+            memcpy(color_ptr, color, _color_target.Stride());
+            void* depth_ptr = _depth_target.Data()
+                            + (_depth_target.Width()
+                            * static_cast<uint32_t>(_p.y)
+                            + static_cast<uint32_t>(_p.x))
+                                * _depth_target.Stride();
 
-                const auto f_depth = static_cast<float>(double_fp_depth);
-                memcpy(depth_ptr, &f_depth, _depth_target.Stride());
-            }
+            const auto f_depth = static_cast<float>(double_fp_depth);
+            memcpy(depth_ptr, &f_depth, _depth_target.Stride());
         }
     }
     inline void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
@@ -720,7 +715,6 @@ namespace RenderImpl{
                 BackfaceCullCCW : BackfaceCullCW;
 
         auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
-
         for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
             auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
             auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
@@ -768,6 +762,9 @@ namespace RenderImpl{
             // C pass, exclude any triangle that are further.
             // else if (aabb_depth > depth)
             //    clip
+            // D pass, exclude any pixels that are further.
+            // else if (aabb_depth > depth)
+            //    clip
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
@@ -789,10 +786,12 @@ namespace RenderImpl{
                     // TODO : Note that operator should be interchangeable
                     // following the depth operations.
                     // C early depth test
-                    //if (aabb_depth < depth)
-                    //    continue;
+                    if (aabb_depth < depth) {
+                        continue;
+                    }
 
-                    FillInTriangle(p,v0, v1, v2, area, depth,
+
+                    FillInTriangle(p,v0, v1, v2, area,
                                   color_target, depth_target);
                 }
             }
