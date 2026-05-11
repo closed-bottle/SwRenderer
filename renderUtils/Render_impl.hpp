@@ -380,6 +380,7 @@ namespace RenderImpl{
         const Lamp::Vec4f& _v1,
         const Lamp::Vec4f& _v2,
         const double& _area,
+        const float& _depth,
         const Image& _color_target,
         const Image& _depth_target) {
         // There are some reference about barycentric coordinate in page 479.
@@ -415,21 +416,23 @@ namespace RenderImpl{
             // Note that I can skip depth test here because
             // I've already did early depth.
             const double double_fp_depth = z_interp;
-            void* color_ptr = _color_target.Data()
+            if (_depth < double_fp_depth) {
+                void* color_ptr = _color_target.Data()
                 + (_color_target.Width()
                     * static_cast<uint32_t>(_p.y)
                     + static_cast<uint32_t>(_p.x))
                         * _color_target.Stride();
 
-            memcpy(color_ptr, color, _color_target.Stride());
-            void* depth_ptr = _depth_target.Data()
-                            + (_depth_target.Width()
-                            * static_cast<uint32_t>(_p.y)
-                            + static_cast<uint32_t>(_p.x))
-                                * _depth_target.Stride();
+                memcpy(color_ptr, color, _color_target.Stride());
+                void* depth_ptr = _depth_target.Data()
+                                + (_depth_target.Width()
+                                * static_cast<uint32_t>(_p.y)
+                                + static_cast<uint32_t>(_p.x))
+                                    * _depth_target.Stride();
 
-            const auto f_depth = static_cast<float>(double_fp_depth);
-            memcpy(depth_ptr, &f_depth, _depth_target.Stride());
+                const auto f_depth = static_cast<float>(double_fp_depth);
+                memcpy(depth_ptr, &f_depth, _depth_target.Stride());
+            }
         }
     }
     inline void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
@@ -763,7 +766,7 @@ namespace RenderImpl{
             // else if (aabb_depth > depth)
             //    clip
             // D pass, exclude any pixels that are further.
-            // else if (aabb_depth > depth)
+            // else if (aabb_depth > pixel_depth)
             //    clip
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
@@ -790,8 +793,7 @@ namespace RenderImpl{
                         continue;
                     }
 
-
-                    FillInTriangle(p,v0, v1, v2, area,
+                    FillInTriangle(p,v0, v1, v2, area, depth,
                                   color_target, depth_target);
                 }
             }
