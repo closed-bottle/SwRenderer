@@ -376,12 +376,12 @@ namespace RenderImpl{
 
 
     inline void FillInTriangle(const float& _x, const float& _y,
-        const Lamp::Vec4f _v0,
-        const Lamp::Vec4f _v1,
-        const Lamp::Vec4f _v2,
+        const Lamp::Vec4f& _v0,
+        const Lamp::Vec4f& _v1,
+        const Lamp::Vec4f& _v2,
         const double& _area,
-        Image& _color_target,
-        Image& _depth_target) {
+        const Image& _color_target,
+        const Image& _depth_target) {
         const Lamp::Vec4f p = {_x, _y, 0, 0};
         // There are some reference about barycentric coordinate in page 479.
         // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
@@ -753,8 +753,6 @@ namespace RenderImpl{
 
             LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
             LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
-
-            std::thread t;
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
