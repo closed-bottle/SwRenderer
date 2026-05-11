@@ -1,4 +1,6 @@
-﻿#include "Pipeline.h"
+﻿#include <thread>
+
+#include "Pipeline.h"
 #include "Render.h"
 #include "RenderCmd.h"
 
@@ -373,6 +375,67 @@ namespace RenderImpl{
     }
 
 
+    inline void FillInTriangle(const float& _x, const float& _y,
+        const Lamp::Vec4f _v0,
+        const Lamp::Vec4f _v1,
+        const Lamp::Vec4f _v2,
+        const double& _area,
+        Image& _color_target,
+        Image& _depth_target) {
+        const Lamp::Vec4f p = {_x, _y, 0, 0};
+        // There are some reference about barycentric coordinate in page 479.
+        // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
+        const double w0 = EdgeFunc<double>(_v1, _v2, p)/_area;
+        const double w1 = EdgeFunc<double>(_v2, _v0, p)/_area;
+        const double w2 = EdgeFunc<double>(_v0, _v1, p)/_area;
+
+        // If inside triangle
+        if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+            void* depth_ptr = _depth_target.Data()
+            + (_depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+            * _depth_target.Stride();
+            float depth;
+            memcpy(&depth, depth_ptr, sizeof(float));
+
+            const double d0 = _v0.z;
+            const double d1 = _v1.z;
+            const double d2 = _v2.z;
+
+            // Imitating vertex color attribute.
+            const double red   = 1.0 * d0;
+            const double green = 1.0 * d1;
+            const double blue  = 1.0 * d2;
+
+            // It should be in a form of fma, but these lines are simplified
+            // Because it is blue, green and red.
+
+            double p_interp[3] = {};
+            p_interp[0] = w0 * blue;
+            p_interp[1] = w1 * green;
+            p_interp[2] = w2 * red;
+            const double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
+
+            const uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
+                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
+                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
+
+            // Depth test.
+            // Potentially add depth compare op to pipeline.
+            // There are no near/far plane clipping yet.
+
+            const double double_fp_depth = z_interp;
+            if (depth < double_fp_depth) {
+                void* color_ptr = _color_target.Data()
+                    + (_color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
+                    * _color_target.Stride();
+
+                memcpy(color_ptr, color, _color_target.Stride());
+
+                const auto f_depth = static_cast<float>(double_fp_depth);
+                memcpy(depth_ptr, &f_depth, _depth_target.Stride());
+            }
+        }
+    }
     inline void DrawRasterShader(const RenderCmdInfo& _cmd_info) {
 #ifdef USE_SIMD
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
@@ -691,72 +754,19 @@ namespace RenderImpl{
             LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
             LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
 
+            std::thread t;
 
             // Cross product == Area of parallelogram made with the area of triangle * 2.
             // Note that this edge function basically does pseudo-cross product.
-
-
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
-                    Lamp::Vec4f p = {static_cast<float>(k), static_cast<float>(j), 0, 0};
-
-                    // There are some reference about barycentric coordinate in page 479.
-                    // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
-                    const double w0 = EdgeFunc<double>(v1, v2, p)/area;
-                    const double w1 = EdgeFunc<double>(v2, v0, p)/area;
-                    const double w2 = EdgeFunc<double>(v0, v1, p)/area;
-
-                    // If inside triangle
-                    if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
-                        void* depth_ptr = depth_target.Data()
-                        + (depth_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                        * depth_target.Stride();
-                        float depth;
-                        memcpy(&depth, depth_ptr, sizeof(float));
-
-                        double d0 = v0.z;
-                        double d1 = v1.z;
-                        double d2 = v2.z;
-
-                        // Imitating vertex color attribute.
-                        double red   = 1.0 * d0;
-                        double green = 1.0 * d1;
-                        double blue  = 1.0 * d2;
-
-                        // It should be in a form of fma, but these lines are simplified
-                        // Because it is blue, green and red.
-
-                        double p_interp[3] = {};
-                        p_interp[0] = w0 * blue;
-                        p_interp[1] = w1 * green;
-                        p_interp[2] = w2 * red;
-                        double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
-
-                        uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
-                                           static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
-                                           static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
-
-                        // Depth test.
-                        // Potentially add depth compare op to pipeline.
-                        // There are no near/far plane clipping yet.
-
-                        const double double_fp_depth = z_interp;
-                        if (depth < double_fp_depth) {
-                            void* color_ptr = color_target.Data()
-                                + (color_target.Width() * static_cast<uint32_t>(p.y) + static_cast<uint32_t>(p.x))
-                                * color_target.Stride();
-
-                            memcpy(color_ptr, color, color_target.Stride());
-
-                            const auto f_depth = static_cast<float>(double_fp_depth);
-                            memcpy(depth_ptr, &f_depth, depth_target.Stride());
-                        }
-                    }
+                    FillInTriangle(static_cast<float>(k),
+                                   static_cast<float>(j),
+                                     v0, v1, v2, area,
+                                  color_target, depth_target);
                 }
             }
         }
-
-
 #endif
     }
 }
