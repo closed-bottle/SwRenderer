@@ -823,6 +823,9 @@ namespace RenderImpl{
         const Lamp::Vec4f& _v0,
         const Lamp::Vec4f& _v1,
         const Lamp::Vec4f& _v2,
+        const Lamp::Vec2f& _u0,
+        const Lamp::Vec2f& _u1,
+        const Lamp::Vec2f& _u2,
         const double& _area,
         const float& _near,
         const float& _far,
@@ -841,26 +844,7 @@ namespace RenderImpl{
             const double d1 = _v1.z;
             const double d2 = _v2.z;
 
-            // Imitating vertex color attribute.
-            const double red   = 1.0 * d0;
-            const double green = 1.0 * d1;
-            const double blue  = 1.0 * d2;
-
-            // It should be in a form of fma, but these lines are simplified
-            // Because it is blue, green and red.
-
-            double p_interp[3] = {};
-            p_interp[0] = w0 * blue;
-            p_interp[1] = w1 * green;
-            p_interp[2] = w2 * red;
             const double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
-
-            const uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
-                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
-                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
-
-            // Note that I can skip depth test here because
-            // I've already did early depth.
             const double double_fp_depth = z_interp;
 
             // Clip near/far plane.
@@ -873,6 +857,14 @@ namespace RenderImpl{
                     * static_cast<uint32_t>(_p.y)
                     + static_cast<uint32_t>(_p.x))
                         * _color_target.Stride();
+
+                Lamp::Vec2f uv = _u0*w0 + _u1*w1 + _u2*w2;
+                uv /= z_interp;
+
+                uint8_t color[] = { 0,
+                    static_cast<uint8_t>(255.0 * uv.y),
+                    static_cast<uint8_t>(255.0 * uv.x),
+                };
 
                 memcpy(color_ptr, color, _color_target.Stride());
                 void* depth_ptr = _depth_target.Data()
@@ -887,17 +879,26 @@ namespace RenderImpl{
         }
     }
     inline void DrawTexturedShader(const RenderCmdInfo& _cmd_info) {
-
         auto& vertex_buffer = _cmd_info.vertex_buffer_;
-        auto& index_buffer = _cmd_info.index_buffer_;
+        auto index_buffer = _cmd_info.index_buffer_[0];
         const auto& uniform = dynamic_cast<const Render::UMvp*>(_cmd_info.uniform_);
 
         auto& view_port = _cmd_info.view_port_;
         Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
-        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_[0]->Data());
+        // I'm hard coding this assuming that it is some kind of vertex pulling,
+        // but ideally it should be fetched from indirect buffer of some kind.
+        // TODO: Remove aliasing if possible.
+        auto* positions
+        = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_[0]->Data());
+        auto* uvs
+        = reinterpret_cast<const Lamp::Vec2f*>(_cmd_info.vertex_buffer_[1]->Data());
+
         auto raster_alloc = Memory(vertex_buffer[0]->count_ * sizeof(Lamp::Vec4f));
         auto raster_data = raster_alloc.Data();
+
+        auto uv_alloc = Memory(vertex_buffer[1]->count_ * sizeof(Lamp::Vec2f));
+        auto uv_data = uv_alloc.Data();
 
         auto& color_target = _cmd_info.render_info_->_color_att->image_;
         auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
@@ -923,20 +924,25 @@ namespace RenderImpl{
 
         uint32_t start = 0;
         uint32_t end = 0;
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer[0]->count_; ++i) {
-            start = std::min(start, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
-            end = std::max(end, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
         }
 
         for (uint64_t i = start; i <= end; ++i) {
-            alignas(16) auto v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
+            alignas(16) auto v0 = Lamp::Vec4f(positions[i].x, positions[i].y, positions[i].z, 1.0f);
+            auto uv0 = Lamp::Vec2f(uvs[i].x, uvs[i].y);
+
             v0 = uniform->mvp * v0;
 
             ClipToNdc(v0);
             NdcToWindow(viewport_transform, v0);
 
+            uv0/= v0.z;
+
             v0.z = 1.0f / v0.z;
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
+            memcpy(&uv_data[i * sizeof(Lamp::Vec2f)], &uv0, sizeof(Lamp::Vec2f));
         }
 
         auto* backface_culling
@@ -944,14 +950,20 @@ namespace RenderImpl{
                 BackfaceCullCCW : BackfaceCullCW;
 
         auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
-        for (uint64_t i = 0; i < index_buffer[0]->count_; i += 3) {
-            auto i0 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i);
-            auto i1 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+1);
-            auto i2 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+2);
+        auto new_uvs = reinterpret_cast<const Lamp::Vec2f*>(uv_data);
+
+        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
 
             alignas(16) Lamp::Vec4f v0 = new_vertices[i0];
             alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
             alignas(16) Lamp::Vec4f v2 = new_vertices[i2];
+
+            Lamp::Vec2f u0 = new_uvs[i0];
+            Lamp::Vec2f u1 = new_uvs[i1];
+            Lamp::Vec2f u2 = new_uvs[i2];
 
             double area;
             area = EdgeFunc<double>(v0, v1, v2);
@@ -1002,7 +1014,7 @@ namespace RenderImpl{
                         continue;
                     }
 
-                    FillInTriangle(p, v0, v1, v2, area,
+                    FillTexture(p, v0, v1, v2, u0, u1, u2, area,
                             view_port->near, view_port->far, stored_depth,
                             color_target, depth_target);
                 }
