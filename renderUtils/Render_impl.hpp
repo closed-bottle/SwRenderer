@@ -926,6 +926,8 @@ namespace RenderImpl{
         LoadOp(_cmd_info.render_info_->_color_att, view_port, width, height);
         LoadOp(_cmd_info.render_info_->_depth_att, view_port, width, height);
 
+        const uint8_t* heap = _cmd_info.heap_;
+
 
         uint32_t start = 0;
         uint32_t end = 0;
@@ -1021,7 +1023,7 @@ namespace RenderImpl{
 
                     FillTexture(p, v0, v1, v2, u0, u1, u2, area,
                             view_port->near, view_port->far, stored_depth,
-                            _cmd_info.heap_, color_target, depth_target);
+                            heap, color_target, depth_target);
                 }
             }
         }

@@ -18,7 +18,7 @@ struct RenderCmdInfo {
     const VertexBuffer** vertex_buffer_;
     const IndexBuffer** index_buffer_;
     const WindingOrder* front_face_;
-    uint8_t* heap_;
+    const uint8_t* heap_;
     const ShaderName* shader_;
     uint64_t first_index_ = 0;
 };
@@ -76,8 +76,7 @@ struct RenderCmd {
     static void BindHeap(CommandBuff& _cmd, uint8_t* _heap) {
         LAMPASSERT(_heap != nullptr, "Target heap cannot be nullptr");
 
-        _cmd.execution_list_.push_back({CmdType::BindHeap,
-            reinterpret_cast<void*>(_heap)});
+        _cmd.execution_list_.push_back({CmdType::BindHeap,_heap});
     }
 
     // No instancing is implemented yet.

@@ -31,6 +31,8 @@ void CommandBuff::Execute() {
                 index_buffers.push_back(static_cast<const IndexBuffer*>(exe.data_));
                 cmd_info.index_buffer_ = index_buffers.data();
                 break;
+            case CmdType::BindHeap:
+                cmd_info.heap_ = static_cast<const uint8_t*>(exe.data_);
             case CmdType::DrawIndexed:
                 // Color
                 // It should query number of attachmenets depending on the shader.
