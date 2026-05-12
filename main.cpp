@@ -39,17 +39,21 @@ std::chrono::steady_clock::time_point TimeStamp::start_;
 std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
 TimeStamp& TimeStamp::instance = gTimeStamp;
-/*
+
+constexpr uint16_t texture_x = 4;
+constexpr uint16_t texture_y = 4;
+
 constexpr uint32_t x_resolution = 2048;
 constexpr uint32_t y_resolution = 2048;
 constexpr uint8_t x_count = 4;
 constexpr uint8_t y_count = 4;
-*/
-constexpr uint32_t x_resolution = 2*2048;
-constexpr uint32_t y_resolution = 2*2048;
+
+/*
+constexpr uint32_t x_resolution = 2*512;
+constexpr uint32_t y_resolution = 2*512;
 constexpr uint8_t x_count = 1;
 constexpr uint8_t y_count = 1;
-
+*/
 constexpr uint64_t width = x_resolution * x_count;
 constexpr uint64_t height = y_resolution * y_count;
 constexpr float near = 0.1f;
@@ -61,7 +65,7 @@ int main(int argc, const char* argv[]) {
 
 	Geometry geom;
 	Mesh mesh;
-	FileReader::LoadGeometryFile<FFormat::OBJ>("suzanne.obj", geom, mesh);
+	FileReader::LoadGeometryFile<FFormat::OBJ>("TexCube.obj", geom, mesh);
 
 	Lamp::Mat4f model = Lamp::Mat4f::Scale(5, 5, 5);
 	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, true);
@@ -73,6 +77,7 @@ int main(int argc, const char* argv[]) {
 
 	// TODO : Do SoA for device buffers.
 	VertexBuffer pos_buffer(sizeof(Lamp::Vec3f),geom.vertex_.Data() + mesh.vertex_offset_, mesh.vertex_count_);
+	VertexBuffer uv_buffer(sizeof(Lamp::Vec2f),geom.uv_.Data() + mesh.vt_offset_, mesh.vt_count_);
 	IndexBuffer index_buffer = {geom.index_.Data() + mesh.index_offset_, mesh.index_count_};
 
 	Memory image_memory(16 * (width * height * channel));
@@ -80,7 +85,7 @@ int main(int argc, const char* argv[]) {
 	Image color_att(image_memory, PixelFormat::B8G8R8, 0, width, height);
 	Image depth_att(image_memory, PixelFormat::D32, width * height * channel, width, height);
 
-	B8G8R8 clear_color = {255, 0, 0};
+	B8G8R8 clear_color = {64, 64, 64};
 	D32 clear_depth(0xFFFF);
 
 	AttInfo color_att_info = {
@@ -98,6 +103,20 @@ int main(int argc, const char* argv[]) {
 		1, &color_att_info, &depth_att_info
 	};
 	Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::RasterShader};
+
+	Memory checker_texture = Memory(texture_x * texture_y * sizeof(uint8_t));
+	// Fill in checkerboard pattern to the memory.
+	for (uint16_t i = 0; i < texture_y; ++i) {
+		const uint8_t a = i % 2 ? 255 : 0;
+		const uint8_t b = !(i % 2) ? 255 : 0;
+
+		const uint8_t color[2] = {a, b};
+
+		for (uint16_t j = 0; j < texture_x; ++j) {
+			checker_texture.Data()[i*texture_x + j] = color[j%2];
+		}
+	}
+
 
 	for (uint8_t i = 0; i < x_count; ++i) {
 		for (uint8_t j = 0; j < y_count; ++j) {
@@ -126,10 +145,12 @@ int main(int argc, const char* argv[]) {
 			RenderCmd::BindPipeline(cmd_buff, render_pipeline);
 
 			RenderCmd::BindVertexBuffer(cmd_buff, pos_buffer, 0);
+			RenderCmd::BindVertexBuffer(cmd_buff, uv_buffer, 1);
 			RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);
 
 			Render::UMvp u_mvp0 = {ShaderName::RasterShader, mvp};
 			RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp0), u_mvp0);
+			RenderCmd::BindHeap(cmd_buff, checker_texture.Data());
 			RenderCmd::DrawIndexed(cmd_buff, 0);
 
 			RenderCmd::EndRender(cmd_buff);
