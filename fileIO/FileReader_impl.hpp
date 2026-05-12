@@ -20,8 +20,8 @@ namespace {
     	Lamp::Vector<Lamp::Vec3f> vertices;
     	Lamp::Vector<Lamp::Vec3f> vnormals_unsorted;
     	Lamp::Vector<Lamp::Vec3f> vnormals;
-    	Lamp::Vector<Lamp::Vec3f> uvs_unsorted;
-    	Lamp::Vector<Lamp::Vec3f> uvs;
+    	Lamp::Vector<Lamp::Vec2f> uvs_unsorted;
+    	Lamp::Vector<Lamp::Vec2f> uvs;
     	Lamp::Vector<uint32_t> indices;
         std::string buffer;
 
@@ -81,18 +81,15 @@ namespace {
 				}
 				else if (stream_segment == "vt") // Texture vertex
 				{
-					Lamp::Vec3f vertex(0.0f, 0.0f, 0.0f);
+					Lamp::Vec2f uv;
 
 					buffer_stream >> stream_segment;
-					vertex.x = std::stof(stream_segment);
+					uv.x = std::stof(stream_segment);
 
 					buffer_stream >> stream_segment;
-					vertex.y = std::stof(stream_segment);
+					uv.y = std::stof(stream_segment);
 
-					buffer_stream >> stream_segment;
-					vertex.z = std::stof(stream_segment);
-
-					uvs_unsorted.push_back(vertex);
+					uvs_unsorted.push_back(uv);
 				}
 				else if (stream_segment == "vn") // Vertex normal
 				{
@@ -144,26 +141,35 @@ namespace {
     	// Align them in 16 bytes address for SIMD.
 
     	size_t valign;
+    	size_t vtalign;
     	size_t ialign;// not in use for now
 #ifdef USE_SIMD
     		valign = alignof(__m128);
+    		vtalign= alignof(Lamp::Vec2f);
     		ialign = alignof(uint32_t);
 #else
     		valign = alignof(Lamp::Vec3f);
+    		vtalign= alignof(Lamp::Vec2f);
     		ialign = alignof(uint32_t);
 #endif
 
     	_out_geom.vertex_ = Memory(sizeof(Lamp::Vec3f) * vertices.size() + valign);
     	_out_geom.vertex_normal_ = Memory(sizeof(Lamp::Vec3f) * vnormals.size() + valign);
-    	_out_geom.uv_ = Memory(sizeof(Lamp::Vec3f) * uvs.size() + valign);
+    	_out_geom.uv_ = Memory(sizeof(Lamp::Vec2f) * uvs.size() + vtalign);
     	_out_geom.index_ = Memory(sizeof(uint32_t) * indices.size() + valign);
 
     	_out_mesh.vertex_count_ = vertices.size();
     	_out_mesh.vertex_offset_
     	= valign - (reinterpret_cast<uint64_t>(_out_geom.vertex_.Data()) % valign);
+
     	_out_mesh.vnormal_count_ = vnormals.size();
     	_out_mesh.vnormal_offset_
 		= valign - (reinterpret_cast<uint64_t>(_out_geom.vertex_normal_.Data()) % valign);
+
+    	_out_mesh.vt_count_ = uvs.size();
+    	_out_mesh.vt_offset_
+		= vtalign - (reinterpret_cast<uint64_t>(_out_geom.uv_.Data()) % vtalign);
+
     	_out_mesh.index_count_ = indices.size();
     	_out_mesh.index_offset_
     	= ialign - (reinterpret_cast<uint64_t>(_out_geom.index_.Data()) % ialign);
@@ -179,9 +185,9 @@ namespace {
     	}
 
     	if (!uvs.empty()) {
-    		memcpy(_out_geom.uv_.Data() + _out_mesh.vertex_offset_,
+    		memcpy(_out_geom.uv_.Data() + _out_mesh.vt_offset_,
 				uvs.data(),
-				sizeof(Lamp::Vec3f) * uvs.size());
+				sizeof(Lamp::Vec2f) * uvs.size());
     	}
 
     	if (!indices.empty()) {
