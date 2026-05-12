@@ -864,12 +864,12 @@ namespace RenderImpl{
 
                 // TODO : Remove hard coding.
                 // texture is hardcoded as 4*4
-                auto g_i = static_cast<uint8_t>(4.0f * uv.y);
-                auto r_i = static_cast<uint8_t>(4.0f * uv.x);
+                const auto g_i = static_cast<uint8_t>(4.0f * uv.y);
+                const auto r_i = static_cast<uint8_t>(4.0f * uv.x);
 
-                auto c = _heap[g_i*4 + r_i];
+                const auto c = _heap[g_i*4 + r_i];
 
-                uint8_t color[] = { c,c,c};
+                const uint8_t color[] = {c,c,c};
 
                 memcpy(color_ptr, color, _color_target.Stride());
                 void* depth_ptr = _depth_target.Data()

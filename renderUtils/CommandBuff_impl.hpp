@@ -1,9 +1,9 @@
-﻿#include "CommandBuff.h"
+﻿#pragma once
 #include "Render.h"
 #include "RenderInfo.h"
 #include "Viewport.h"
 
-void CommandBuff::Execute() {
+inline void CommandBuff::Execute() {
     RenderCmdInfo cmd_info;
 
     Lamp::Vector<const VertexBuffer*> vertex_buffers;
