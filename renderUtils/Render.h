@@ -9,6 +9,7 @@ enum class ShaderName {
     PointShader,
     LineShader,
     RasterShader,
+    TexturedShader,
     Count
 };
 

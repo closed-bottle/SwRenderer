@@ -6,6 +6,9 @@
 void CommandBuff::Execute() {
     RenderCmdInfo cmd_info;
 
+    Lamp::Vector<const VertexBuffer*> vertex_buffers;
+    Lamp::Vector<const IndexBuffer*> index_buffers;
+
     for (auto& exe : execution_list_) {
         switch (exe.type_) {
             case CmdType::SetViewport:
@@ -21,10 +24,12 @@ void CommandBuff::Execute() {
                 cmd_info.uniform_ = static_cast<const Render::ShaderFootprint*>(exe.data_);
                 break;
             case CmdType::BindVertexBuffer:
-                cmd_info.vertex_buffer_ = static_cast<const VertexBuffer*>(exe.data_);
+                vertex_buffers.push_back(static_cast<const VertexBuffer*>(exe.data_));
+                cmd_info.vertex_buffer_ = vertex_buffers.data();
                 break;
             case CmdType::BindIndexBuffer:
-                cmd_info.index_buffer_ = static_cast<const IndexBuffer*>(exe.data_);
+                index_buffers.push_back(static_cast<const IndexBuffer*>(exe.data_));
+                cmd_info.index_buffer_ = index_buffers.data();
                 break;
             case CmdType::DrawIndexed:
                 // Color

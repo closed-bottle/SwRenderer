@@ -20,6 +20,7 @@ enum class CmdType {
     VertexBufferBind,
     BindIndexBuffer,
     IndexBufferBind,
+    BindHeap,
     DrawIndexed,
     Count
 };

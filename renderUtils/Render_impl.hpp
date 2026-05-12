@@ -107,8 +107,8 @@ namespace RenderImpl{
         const uint32_t uiheight = view_port->height;
         Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
-        for (uint64_t i = 0; i < _cmd_info.vertex_buffer_->count_; ++i) {
-            auto v3 = *(reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data()) + (sizeof(Lamp::Vec3f) * i));
+        for (uint64_t i = 0; i < _cmd_info.vertex_buffer_[0]->count_; ++i) {
+            auto v3 = *(reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_[0]->Data()) + (sizeof(Lamp::Vec3f) * i));
             Lamp::Vec4f v4 = {v3.x, v3.y, v3.z, 1};
 
             v4 = uniform->mvp * v4;
@@ -191,7 +191,7 @@ namespace RenderImpl{
         // during initialize.
 
         // alignment and offset is already calculated for vertex.
-        auto preprocess_size = sizeof(Lamp::Vec4f) * (vertex_buffer->alloc_count_ + SIMD_REGISTER_WIDTH);
+        auto preprocess_size = sizeof(Lamp::Vec4f) * (vertex_buffer[0]->alloc_count_ + SIMD_REGISTER_WIDTH);
         auto preprocess = Memory(preprocess_size);
         memset(preprocess.Data(), 0, preprocess_size);
         uint64_t offset = (SIMD_REGISTER_WIDTH - reinterpret_cast<uint64_t>(preprocess.Data()) % SIMD_REGISTER_WIDTH);
@@ -202,12 +202,12 @@ namespace RenderImpl{
         // TODO : Maybe just do it while loading files.
         uint32_t start = 0;
         uint32_t end = 0;
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
-            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
-            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer[0]->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
         }
 
-        uint32_t count = index_buffer->count_ ? (end - start) + 1 : 0;
+        uint32_t count = index_buffer[0]->count_ ? (end - start) + 1 : 0;
         count -= (count % SIMD_VECTOR_FETCH_PADDING);
         // Exclude last 8 elements, so we don't use padded value.
 
@@ -233,13 +233,13 @@ namespace RenderImpl{
         };
 
         auto* in_x
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data());
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_[0]->Data());
         auto* in_y
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
-                + 1 *_cmd_info.vertex_buffer_->alloc_count_;
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_[0]->Data())
+                + 1 *_cmd_info.vertex_buffer_[0]->alloc_count_;
         auto* in_z
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
-                + 2 *_cmd_info.vertex_buffer_->alloc_count_;
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_[0]->Data())
+                + 2 *_cmd_info.vertex_buffer_[0]->alloc_count_;
         __m256 ww = _mm256_load_ps(ws);
 
         uint64_t j = 0;
@@ -280,12 +280,12 @@ namespace RenderImpl{
             out_z = _mm256_div_ps(out_z, clip_w);
 
             memcpy(&raster_data[sizeof(float) * j], &out_x, sizeof(__m256));
-            memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer->alloc_count_) + j)], &out_y, sizeof(__m256));
-            memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer->alloc_count_) + j)], &out_x, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer[0]->alloc_count_) + j)], &out_y, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer[0]->alloc_count_) + j)], &out_x, sizeof(__m256));
         }
 
 
-        for (; j < vertex_buffer->count_; ++j) {
+        for (; j < vertex_buffer[0]->count_; ++j) {
             alignas(16) Lamp::Vec4f v0 = Lamp::Vec4f(in_x[j], in_y[j], in_z[j], 1);
             v0 = uniform->mvp * v0;
             ClipToNdc(v0);
@@ -293,21 +293,21 @@ namespace RenderImpl{
 
 
             memcpy(&raster_data[sizeof(float) * j], &v0.x, sizeof(float));
-            memcpy(&raster_data[sizeof(float) * (1* vertex_buffer->alloc_count_ + j)], &v0.y, sizeof(float));
-            memcpy(&raster_data[sizeof(float) * (2* vertex_buffer->alloc_count_ + j)], &v0.z, sizeof(float));
-            memcpy(&raster_data[sizeof(float) * (3* vertex_buffer->alloc_count_ + j)], &v0.w, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (1* vertex_buffer[0]->alloc_count_ + j)], &v0.y, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (2* vertex_buffer[0]->alloc_count_ + j)], &v0.z, sizeof(float));
+            memcpy(&raster_data[sizeof(float) * (3* vertex_buffer[0]->alloc_count_ + j)], &v0.w, sizeof(float));
         }
 
 
 
-        auto i_d = static_cast<uint8_t*>(index_buffer->data_);
+        auto i_d = static_cast<uint8_t*>(index_buffer[0]->data_);
 
         uint8_t* x = raster_data;
-        uint8_t* y = &raster_data[sizeof(float) * (1 * vertex_buffer->alloc_count_)];
-        uint8_t* z = &raster_data[sizeof(float) * (2 * vertex_buffer->alloc_count_)];
-        uint8_t* w = &raster_data[sizeof(float) * (3 * vertex_buffer->alloc_count_)];
+        uint8_t* y = &raster_data[sizeof(float) * (1 * vertex_buffer[0]->alloc_count_)];
+        uint8_t* z = &raster_data[sizeof(float) * (2 * vertex_buffer[0]->alloc_count_)];
+        uint8_t* w = &raster_data[sizeof(float) * (3 * vertex_buffer[0]->alloc_count_)];
 
-        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+        for (uint64_t i = 0; i < index_buffer[0]->count_; i += 3) {
             uint32_t i0, i1, i2;
 
             memcpy(&i0, &i_d[sizeof(uint32_t) * (i+0)], sizeof(uint32_t));
@@ -336,14 +336,14 @@ namespace RenderImpl{
         }
 
 #else
-        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
-        Memory preprocess = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_[0]->Data());
+        Memory preprocess = Memory(vertex_buffer[0]->count_ * sizeof(Lamp::Vec4f));
 
         uint32_t start = 0;
         uint32_t end = 0;
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
-            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
-            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer[0]->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
         }
 
         for (uint64_t i = start; i <= end; ++i) {
@@ -357,10 +357,10 @@ namespace RenderImpl{
 
         auto new_verticecs = reinterpret_cast<const Lamp::Vec4f*>(preprocess.Data());
 
-        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
-            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
-            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
-            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
+        for (uint64_t i = 0; i < index_buffer[0]->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+2);
 
             alignas(16) Lamp::Vec4f v0 = new_verticecs[i0];
             alignas(16) Lamp::Vec4f v1 = new_verticecs[i1];
@@ -452,7 +452,7 @@ namespace RenderImpl{
         Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
         const auto raster_alloc_size
-            = sizeof(Lamp::Vec4f) * (vertex_buffer->alloc_count_ + SIMD_REGISTER_WIDTH);
+            = sizeof(Lamp::Vec4f) * (vertex_buffer[0]->alloc_count_ + SIMD_REGISTER_WIDTH);
         auto raster_alloc = Memory(raster_alloc_size);
         auto raster_buffer = raster_alloc.Data();
 
@@ -473,12 +473,12 @@ namespace RenderImpl{
 
         uint32_t start = 0;
         uint32_t end = 0;
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
-            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
-            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer[0]->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
         }
 
-        uint32_t count = index_buffer->count_ ? end - start : 0;
+        uint32_t count = index_buffer[0]->count_ ? end - start : 0;
         Lamp::Mat4f merged_mat = viewport_transform * uniform->mvp;
 
         __m256 merged[16] = {
@@ -501,13 +501,13 @@ namespace RenderImpl{
         };
 
         auto* in_x
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data());
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_[0]->Data());
         auto* in_y
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
-                + 1 *_cmd_info.vertex_buffer_->alloc_count_;
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_[0]->Data())
+                + 1 *_cmd_info.vertex_buffer_[0]->alloc_count_;
         auto* in_z
-            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_->Data())
-                + 2 *_cmd_info.vertex_buffer_->alloc_count_;
+            = reinterpret_cast<const float*>(_cmd_info.vertex_buffer_[0]->Data())
+                + 2 *_cmd_info.vertex_buffer_[0]->alloc_count_;
         __m256 ww = _mm256_load_ps(ws);
 
         uint64_t out_itr = 0;
@@ -550,19 +550,19 @@ namespace RenderImpl{
 
 
             memcpy(&raster_data[sizeof(float) * out_itr], &out_x, sizeof(__m256));
-            memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer->alloc_count_) + out_itr)], &out_y, sizeof(__m256));
-            memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer->alloc_count_) + out_itr)], &out_z, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((1 * vertex_buffer[0]->alloc_count_) + out_itr)], &out_y, sizeof(__m256));
+            memcpy(&raster_data[sizeof(float) * ((2 * vertex_buffer[0]->alloc_count_) + out_itr)], &out_z, sizeof(__m256));
         }
-        auto i_d = static_cast<uint8_t*>(index_buffer->data_);
+        auto i_d = static_cast<uint8_t*>(index_buffer[0]->data_);
 
         auto* backface_culling
             = _cmd_info.pipeline_->front_face_ == WindingOrder::CCW ?
                 BackfaceCullCCW : BackfaceCullCW;
         uint8_t* xs = raster_data;
-        uint8_t* ys = &raster_data[sizeof(float) * (1 * vertex_buffer->alloc_count_)];
-        uint8_t* zs = &raster_data[sizeof(float) * (2 * vertex_buffer->alloc_count_)];
+        uint8_t* ys = &raster_data[sizeof(float) * (1 * vertex_buffer[0]->alloc_count_)];
+        uint8_t* zs = &raster_data[sizeof(float) * (2 * vertex_buffer[0]->alloc_count_)];
 
-        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
+        for (uint64_t i = 0; i < index_buffer[0]->count_; i += 3) {
             uint32_t i0, i1, i2;
 
             memcpy(&i0, &i_d[sizeof(uint32_t) * (i+0)], sizeof(uint32_t));
@@ -654,8 +654,8 @@ namespace RenderImpl{
         auto& view_port = _cmd_info.view_port_;
         Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
 
-        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_->Data());
-        auto raster_alloc = Memory(vertex_buffer->count_ * sizeof(Lamp::Vec4f));
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_[0]->Data());
+        auto raster_alloc = Memory(vertex_buffer[0]->count_ * sizeof(Lamp::Vec4f));
         auto raster_data = raster_alloc.Data();
 
         auto& color_target = _cmd_info.render_info_->_color_att->image_;
@@ -682,9 +682,9 @@ namespace RenderImpl{
 
         uint32_t start = 0;
         uint32_t end = 0;
-        for (uint64_t i = _cmd_info.first_index_; i < index_buffer->count_; ++i) {
-            start = std::min(start, *(static_cast<uint32_t*>(index_buffer->data_) + i));
-            end = std::max(end, *(static_cast<uint32_t*>(index_buffer->data_) + i));
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer[0]->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
         }
 
         for (uint64_t i = start; i <= end; ++i) {
@@ -703,10 +703,10 @@ namespace RenderImpl{
                 BackfaceCullCCW : BackfaceCullCW;
 
         auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
-        for (uint64_t i = 0; i < index_buffer->count_; i += 3) {
-            auto i0 = *(static_cast<uint32_t*>(index_buffer->data_) + i);
-            auto i1 = *(static_cast<uint32_t*>(index_buffer->data_) + i+1);
-            auto i2 = *(static_cast<uint32_t*>(index_buffer->data_) + i+2);
+        for (uint64_t i = 0; i < index_buffer[0]->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+2);
 
             alignas(16) Lamp::Vec4f v0 = new_vertices[i0];
             alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
@@ -818,6 +818,197 @@ namespace RenderImpl{
         }
 #endif
     }
+
+    inline void FillTexture(const Lamp::Vec4f& _p,
+        const Lamp::Vec4f& _v0,
+        const Lamp::Vec4f& _v1,
+        const Lamp::Vec4f& _v2,
+        const double& _area,
+        const float& _near,
+        const float& _far,
+        const float& _depth,
+        const Image& _color_target,
+        const Image& _depth_target) {
+        // There are some reference about barycentric coordinate in page 479.
+        // https://registry.khronos.org/OpenGL/specs/gl/glspec46.core.pdf
+        const double w0 = EdgeFunc<double>(_v1, _v2, _p)/_area;
+        const double w1 = EdgeFunc<double>(_v2, _v0, _p)/_area;
+        const double w2 = EdgeFunc<double>(_v0, _v1, _p)/_area;
+
+        // If inside triangle
+        if (w0 >= 0 && w1 >= 0 && w2 >= 0) {
+            const double d0 = _v0.z;
+            const double d1 = _v1.z;
+            const double d2 = _v2.z;
+
+            // Imitating vertex color attribute.
+            const double red   = 1.0 * d0;
+            const double green = 1.0 * d1;
+            const double blue  = 1.0 * d2;
+
+            // It should be in a form of fma, but these lines are simplified
+            // Because it is blue, green and red.
+
+            double p_interp[3] = {};
+            p_interp[0] = w0 * blue;
+            p_interp[1] = w1 * green;
+            p_interp[2] = w2 * red;
+            const double z_interp = w0 * d0 + w1 * d1 + w2 * d2;
+
+            const uint8_t color[] = {static_cast<uint8_t>(255.0 * p_interp[0] / z_interp),
+                               static_cast<uint8_t>(255.0 * p_interp[1] / z_interp),
+                               static_cast<uint8_t>(255.0 * p_interp[2] / z_interp)};
+
+            // Note that I can skip depth test here because
+            // I've already did early depth.
+            const double double_fp_depth = z_interp;
+
+            // Clip near/far plane.
+            if (z_interp < _near || z_interp > _far)
+                return;
+
+            if (_depth < double_fp_depth) {
+                void* color_ptr = _color_target.Data()
+                + (_color_target.Width()
+                    * static_cast<uint32_t>(_p.y)
+                    + static_cast<uint32_t>(_p.x))
+                        * _color_target.Stride();
+
+                memcpy(color_ptr, color, _color_target.Stride());
+                void* depth_ptr = _depth_target.Data()
+                                + (_depth_target.Width()
+                                * static_cast<uint32_t>(_p.y)
+                                + static_cast<uint32_t>(_p.x))
+                                    * _depth_target.Stride();
+
+                const auto f_depth = static_cast<float>(double_fp_depth);
+                memcpy(depth_ptr, &f_depth, _depth_target.Stride());
+            }
+        }
+    }
+    inline void DrawTexturedShader(const RenderCmdInfo& _cmd_info) {
+
+        auto& vertex_buffer = _cmd_info.vertex_buffer_;
+        auto& index_buffer = _cmd_info.index_buffer_;
+        const auto& uniform = dynamic_cast<const Render::UMvp*>(_cmd_info.uniform_);
+
+        auto& view_port = _cmd_info.view_port_;
+        Lamp::Mat4f viewport_transform = ViewportTransform(*view_port);
+
+        auto* vertices = reinterpret_cast<const Lamp::Vec3f*>(_cmd_info.vertex_buffer_[0]->Data());
+        auto raster_alloc = Memory(vertex_buffer[0]->count_ * sizeof(Lamp::Vec4f));
+        auto raster_data = raster_alloc.Data();
+
+        auto& color_target = _cmd_info.render_info_->_color_att->image_;
+        auto& depth_target = _cmd_info.render_info_->_depth_att->image_;
+
+        const int x = static_cast<int>(view_port->x);
+        const int y = static_cast<int>(view_port->y);
+        const auto width = static_cast<uint32_t>(view_port->width);
+        const auto height = static_cast<uint32_t>(view_port->height);
+
+        constexpr uint16_t hi_z_width = 16;
+        constexpr uint16_t hi_z_height = 16;
+
+        LAMPASSERT(hi_z_width > 0,  "hi-z block should be bigger than 0");
+        LAMPASSERT(hi_z_height > 0, "hi-z block should be bigger than 0");
+
+        auto hi_z_alloc = Memory(hi_z_width * hi_z_height * sizeof(float));
+        auto hi_z_data = hi_z_alloc.Data();
+        memset(hi_z_data, 0, hi_z_width * hi_z_height * sizeof(float));
+
+        LoadOp(_cmd_info.render_info_->_color_att, view_port, width, height);
+        LoadOp(_cmd_info.render_info_->_depth_att, view_port, width, height);
+
+
+        uint32_t start = 0;
+        uint32_t end = 0;
+        for (uint64_t i = _cmd_info.first_index_; i < index_buffer[0]->count_; ++i) {
+            start = std::min(start, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+            end = std::max(end, *(static_cast<uint32_t*>(index_buffer[0]->data_) + i));
+        }
+
+        for (uint64_t i = start; i <= end; ++i) {
+            alignas(16) auto v0 = Lamp::Vec4f(vertices[i].x, vertices[i].y, vertices[i].z, 1.0f);
+            v0 = uniform->mvp * v0;
+
+            ClipToNdc(v0);
+            NdcToWindow(viewport_transform, v0);
+
+            v0.z = 1.0f / v0.z;
+            memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
+        }
+
+        auto* backface_culling
+            = _cmd_info.pipeline_->front_face_ == WindingOrder::CCW ?
+                BackfaceCullCCW : BackfaceCullCW;
+
+        auto new_vertices = reinterpret_cast<const Lamp::Vec4f*>(raster_data);
+        for (uint64_t i = 0; i < index_buffer[0]->count_; i += 3) {
+            auto i0 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i);
+            auto i1 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+1);
+            auto i2 = *(static_cast<uint32_t*>(index_buffer[0]->data_) + i+2);
+
+            alignas(16) Lamp::Vec4f v0 = new_vertices[i0];
+            alignas(16) Lamp::Vec4f v1 = new_vertices[i1];
+            alignas(16) Lamp::Vec4f v2 = new_vertices[i2];
+
+            double area;
+            area = EdgeFunc<double>(v0, v1, v2);
+            // Back face culling
+            if (!backface_culling(area))
+                continue;
+
+            AABB2i aabb;
+            aabb.min = {
+                static_cast<int>(std::min(std::min(v0.x, v1.x), v2.x)),
+                static_cast<int>(std::min(std::min(v0.y, v1.y), v2.y))
+            };
+            aabb.max = {
+                static_cast<int>(std::max(std::max(v0.x, v1.x), v2.x)) + 1,
+                static_cast<int>(std::max(std::max(v0.y, v1.y), v2.y)) + 1
+            };
+
+            float aabb_depth = std::min(std::min(v0.z, v1.z), v2.z);
+            aabb.min.x = std::max(aabb.min.x, x);
+            aabb.min.y = std::max(aabb.min.y, y);
+
+            aabb.max.x = std::min(aabb.max.x, static_cast<int>(x + width) -1);
+            aabb.max.y = std::min(aabb.max.y, static_cast<int>(y + height) -1);
+
+            LAMPASSERT(aabb.max.x < 0, "AABB Out of bound");
+            LAMPASSERT(aabb.max.y < 0, "AABB Out of bound");
+
+            if (aabb_depth < view_port->near
+             || aabb_depth > view_port->far) {
+                continue;
+            }
+
+            for (int j = aabb.min.y; j < aabb.max.y; ++j) {
+                for (int k = aabb.min.x; k < aabb.max.x; ++k) {
+                    Lamp::Vec4f p{static_cast<float>(k),
+                                  static_cast<float>(j),
+                                  0, 0};
+
+                    void* depth_ptr = depth_target.Data()
+                                    + (depth_target.Width()
+                                    * static_cast<uint32_t>(p.y)
+                                    + static_cast<uint32_t>(p.x))
+                                        * depth_target.Stride();
+                    float stored_depth;
+                    memcpy(&stored_depth, depth_ptr, sizeof(float));
+
+                    if (aabb_depth < stored_depth) {
+                        continue;
+                    }
+
+                    FillInTriangle(p, v0, v1, v2, area,
+                            view_port->near, view_port->far, stored_depth,
+                            color_target, depth_target);
+                }
+            }
+        }
+    }
 }
 
 
@@ -831,6 +1022,9 @@ inline void Render::Draw(const RenderCmdInfo& _cmd_info) {
             break;
         case ShaderName::RasterShader:
             RenderImpl::DrawRasterShader(_cmd_info);
+            break;
+        case ShaderName::TexturedShader:
+            RenderImpl::DrawTexturedShader(_cmd_info);
             break;
         case ShaderName::Count:
             // Not implemented
