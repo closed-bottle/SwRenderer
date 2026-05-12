@@ -830,6 +830,7 @@ namespace RenderImpl{
         const float& _near,
         const float& _far,
         const float& _depth,
+        const uint8_t* _heap,
         const Image& _color_target,
         const Image& _depth_target) {
         // There are some reference about barycentric coordinate in page 479.
@@ -861,10 +862,14 @@ namespace RenderImpl{
                 Lamp::Vec2f uv = _u0*w0 + _u1*w1 + _u2*w2;
                 uv /= z_interp;
 
-                uint8_t color[] = { 0,
-                    static_cast<uint8_t>(255.0 * uv.y),
-                    static_cast<uint8_t>(255.0 * uv.x),
-                };
+                // TODO : Remove hard coding.
+                // texture is hardcoded as 4*4
+                auto g_i = static_cast<uint8_t>(4.0f * uv.y);
+                auto r_i = static_cast<uint8_t>(4.0f * uv.x);
+
+                auto c = _heap[g_i*4 + r_i];
+
+                uint8_t color[] = { c,c,c};
 
                 memcpy(color_ptr, color, _color_target.Stride());
                 void* depth_ptr = _depth_target.Data()
@@ -1016,7 +1021,7 @@ namespace RenderImpl{
 
                     FillTexture(p, v0, v1, v2, u0, u1, u2, area,
                             view_port->near, view_port->far, stored_depth,
-                            color_target, depth_target);
+                            _cmd_info.heap_, color_target, depth_target);
                 }
             }
         }
