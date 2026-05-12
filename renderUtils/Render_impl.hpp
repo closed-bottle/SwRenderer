@@ -869,6 +869,9 @@ namespace RenderImpl{
 
                 const auto c = _heap[g_i*4 + r_i];
 
+                //const uint8_t color[] = {0,
+                //    static_cast<uint8_t>(255.0 * uv.y),
+                //    static_cast<uint8_t>(255.0 * uv.x)};
                 const uint8_t color[] = {c,c,c};
 
                 memcpy(color_ptr, color, _color_target.Stride());
