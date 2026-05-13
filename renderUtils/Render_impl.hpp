@@ -819,7 +819,7 @@ namespace RenderImpl{
         }
 #endif
     }
-
+    Lamp::Vector<float> dbgw(100,1.0f);
     inline void FillTexture(const Lamp::Vec4f& _p,
         const Lamp::Vec4f& _v0,
         const Lamp::Vec4f& _v1,
@@ -827,6 +827,9 @@ namespace RenderImpl{
         const Lamp::Vec2f& _u0,
         const Lamp::Vec2f& _u1,
         const Lamp::Vec2f& _u2,
+        const float& _w0,
+        const float& _w1,
+        const float& _w2,
         const double& _area,
         const float& _near,
         const float& _far,
@@ -860,20 +863,30 @@ namespace RenderImpl{
                     + static_cast<uint32_t>(_p.x))
                         * _color_target.Stride();
 
-                Lamp::Vec2f uv = _u0*w0 + _u1*w1 + _u2*w2;
-                uv /= z_interp;
+                //Lamp::Vec2f uv = _u0*w0 + _u1*w1 + _u2*w2;
+                //uv /= z_interp;
+                //uv = uv.Normalize();
+                double u = _u0.x*w0 + _u1.x*w1 + _u2.x*w2;
+                double v = _u0.y*w0 + _u1.y*w1 + _u2.y*w2;
+                double test = w0 * _w0 + w1 * _w1 + w2 * _w2;
+                u /= test;
+                v /= test;
 
                 // TODO : Remove hard coding.
                 // texture is hardcoded as 4*4
-                const auto g_i = static_cast<uint8_t>(4.0f * uv.y);
-                const auto r_i = static_cast<uint8_t>(4.0f * uv.x);
+                const auto g_i = static_cast<uint8_t>(4.0f * v);
+                const auto r_i = static_cast<uint8_t>(4.0f * u);
 
                 const auto c = _heap[g_i*4 + r_i];
 
-                //const uint8_t color[] = {0,
-                //    static_cast<uint8_t>(255.0 * uv.y),
-                //    static_cast<uint8_t>(255.0 * uv.x)};
+                //const uint8_t color[] = {static_cast<uint8_t>(255.0 * u),
+                //   static_cast<uint8_t>(255.0 * v),
+                //    static_cast<uint8_t>(255.0 * u)};
                 const uint8_t color[] = {c,c,c};
+                //const uint8_t color[] = {static_cast<uint8_t>(255.0 * double_fp_depth),
+                //    static_cast<uint8_t>(255.0 * double_fp_depth),
+                //    static_cast<uint8_t>(255.0 * double_fp_depth)};
+
 
                 memcpy(color_ptr, color, _color_target.Stride());
                 void* depth_ptr = _depth_target.Data()
@@ -945,13 +958,13 @@ namespace RenderImpl{
             auto uv0 = Lamp::Vec2f(uvs[i].x, uvs[i].y);
 
             v0 = uniform->mvp * v0;
-
+            dbgw[i] = 1.0f / v0.w;
+            uv0 /= v0.w;
             ClipToNdc(v0);
             NdcToWindow(viewport_transform, v0);
 
-            uv0/= v0.z;
+            //v0.z = 1.0f / v0.z;
 
-            v0.z = 1.0f / v0.z;
             memcpy(&raster_data[i * sizeof(Lamp::Vec4f)], &v0, sizeof(Lamp::Vec4f));
             memcpy(&uv_data[i * sizeof(Lamp::Vec2f)], &uv0, sizeof(Lamp::Vec2f));
         }
@@ -1026,7 +1039,7 @@ namespace RenderImpl{
                     //    continue;
                     //}
 
-                    FillTexture(p, v0, v1, v2, u0, u1, u2, area,
+                    FillTexture(p, v0, v1, v2, u0, u1, u2, dbgw[i0],dbgw[i1],dbgw[i2],area,
                             view_port->near, view_port->far, stored_depth,
                             heap, color_target, depth_target);
                 }
