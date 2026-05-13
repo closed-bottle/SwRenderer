@@ -33,6 +33,7 @@ inline void CommandBuff::Execute() {
                 break;
             case CmdType::BindHeap:
                 cmd_info.heap_ = static_cast<const uint8_t*>(exe.data_);
+                break;
             case CmdType::DrawIndexed:
                 // Color
                 // It should query number of attachmenets depending on the shader.
