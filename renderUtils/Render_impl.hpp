@@ -1008,8 +1008,8 @@ namespace RenderImpl{
 
             for (int j = aabb.min.y; j < aabb.max.y; ++j) {
                 for (int k = aabb.min.x; k < aabb.max.x; ++k) {
-                    Lamp::Vec4f p{static_cast<float>(k),
-                                  static_cast<float>(j),
+                    Lamp::Vec4f p{static_cast<float>(k) + 0.5f,
+                                  static_cast<float>(j) + 0.5f,
                                   0, 0};
 
                     void* depth_ptr = depth_target.Data()
