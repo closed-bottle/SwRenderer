@@ -806,9 +806,10 @@ namespace RenderImpl{
                     // TODO : Note that operator should be interchangeable
                     // following the depth operations.
                     // C early depth test
-                    if (aabb_depth < stored_depth) {
-                        continue;
-                    }
+                    // TODO : Critical bug, incorrect clear value for depth.
+                    //if (aabb_depth > stored_depth) {
+                    //    continue;
+                    //}
 
                     FillInTriangle(p,v0, v1, v2, area,
                             view_port->near, view_port->far, stored_depth,
@@ -1020,9 +1021,10 @@ namespace RenderImpl{
                     float stored_depth;
                     memcpy(&stored_depth, depth_ptr, sizeof(float));
 
-                    if (aabb_depth < stored_depth) {
-                        continue;
-                    }
+                    // Critical issue, see RasterTriangle().
+                    //if (aabb_depth < stored_depth) {
+                    //    continue;
+                    //}
 
                     FillTexture(p, v0, v1, v2, u0, u1, u2, area,
                             view_port->near, view_port->far, stored_depth,
