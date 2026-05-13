@@ -20,16 +20,12 @@ Current build only supports simple line drawing without triangle filling.
 
 ## Current state
 
-Tried to implement HI-Z, however it doesn't give any
-meaningful performance gain.
-I'm suspecting :
-1. Additional memory access.(twice)
-2. Additional comparison.
-3. Shader is not complex enough to mitigate overhead.
+Added perspective-correct interpolation for vertex attributes.
 
-I can do it per AABB, but I was not able to decide
-how to deal with triangle across the multiple
-HI-Z tiles.
+| Linear interpolation           | Perspective correct interpolation |
+|--------------------------------|-----------------------------------|
+| ![](media/persp_incorrect.png) | ![](media/persp_correct.png)                                  |
+
 
 
 ### How to build
