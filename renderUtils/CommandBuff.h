@@ -21,6 +21,8 @@ enum class CmdType {
     BindIndexBuffer,
     IndexBufferBind,
     BindHeap,
+    BindImage,
+    ImageBinding,
     DrawIndexed,
     Count
 };
@@ -39,6 +41,10 @@ class CommandBuff {
     bool is_active_ = false;
     bool is_rendering_ = false;
 
+    uint16_t vertex_max_binding = 0;
+    uint16_t index_max_binding = 0;
+    uint16_t image_max_binding = 0;
+    uint16_t uniform_max_binding = 0;
     Lamp::list<CmdBlock> execution_list_;
 
 public:

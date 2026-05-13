@@ -5,6 +5,7 @@
 
 enum class PixelFormat : size_t {
     Invalid = 0,
+    R8,
     R8G8B8,
     B8G8R8,
     D16,
@@ -16,6 +17,7 @@ enum class PixelFormat : size_t {
 namespace ReservedImageFormatParams{
     constexpr size_t elements_count[] = {
         0, //Invalid
+        1, //R8
         3, //R8G8B8
         3, //B8G8R8
         1, //D16
@@ -25,6 +27,7 @@ namespace ReservedImageFormatParams{
 
     constexpr size_t stride[] = {
         0, //Invalid
+        1 * elements_count[static_cast<size_t>(PixelFormat::R8G8B8)], // R8
         1 * elements_count[static_cast<size_t>(PixelFormat::R8G8B8)], //R8G8B8
         1 * elements_count[static_cast<size_t>(PixelFormat::B8G8R8)], //B8G8R8
         2 * elements_count[static_cast<size_t>(PixelFormat::D16)], //D16
@@ -67,6 +70,32 @@ struct R8G8B8 {
 
     bool operator!=(const R8G8B8& _r) const {
         return R != _r.R || G != _r.G || B != _r.B;
+    }
+};
+
+
+struct R8 {
+    uint8_t R;
+
+    R8 operator+(const R8& _r) const {
+        R8 result{};
+        result.R += _r.R;
+
+        return result;
+    }
+
+    R8& operator+=(const R8& _r) {
+        R += _r.R;
+
+        return *this;
+    }
+
+    bool operator==(const R8& _r) const {
+        return R == _r.R;
+    }
+
+    bool operator!=(const R8& _r) const {
+        return R != _r.R;
     }
 };
 

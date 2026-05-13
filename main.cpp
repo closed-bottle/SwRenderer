@@ -43,17 +43,17 @@ TimeStamp& TimeStamp::instance = gTimeStamp;
 constexpr uint16_t texture_x = 4;
 constexpr uint16_t texture_y = 4;
 
+/*
 constexpr uint32_t x_resolution = 2048;
 constexpr uint32_t y_resolution = 2048;
 constexpr uint8_t x_count = 4;
 constexpr uint8_t y_count = 4;
-
-/*
+*/
 constexpr uint32_t x_resolution = 2*512;
 constexpr uint32_t y_resolution = 2*512;
 constexpr uint8_t x_count = 1;
 constexpr uint8_t y_count = 1;
-*/
+
 constexpr uint64_t width = x_resolution * x_count;
 constexpr uint64_t height = y_resolution * y_count;
 constexpr float near = 0.1f;
@@ -65,7 +65,7 @@ int main(int argc, const char* argv[]) {
 
 	Geometry geom;
 	Mesh mesh;
-	FileReader::LoadGeometryFile<FFormat::OBJ>("TexCube.obj", geom, mesh);
+	FileReader::LoadGeometryFile<FFormat::OBJ>("TexPlane.obj", geom, mesh);
 
 	Lamp::Mat4f model = Lamp::Mat4f::Scale(5, 5, 5);
 	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, true);
@@ -80,10 +80,10 @@ int main(int argc, const char* argv[]) {
 	VertexBuffer uv_buffer(sizeof(Lamp::Vec2f),geom.uv_.Data() + mesh.vt_offset_, mesh.vt_count_);
 	IndexBuffer index_buffer = {geom.index_.Data() + mesh.index_offset_, mesh.index_count_};
 
-	Memory image_memory(16 * (width * height * channel));
-	memset(image_memory.Data(), 0, 16 * (width * height * channel));
-	Image color_att(image_memory, PixelFormat::B8G8R8, 0, width, height);
-	Image depth_att(image_memory, PixelFormat::D32, width * height * channel, width, height);
+	Memory target_memory(16 * (width * height * channel));
+	memset(target_memory.Data(), 0, 16 * (width * height * channel));
+	Image color_att(target_memory, PixelFormat::B8G8R8, 0, width, height);
+	Image depth_att(target_memory, PixelFormat::D32, width * height * channel, width, height);
 
 	B8G8R8 clear_color = {64, 64, 64};
 	D32 clear_depth(0xFFFF);
@@ -104,7 +104,8 @@ int main(int argc, const char* argv[]) {
 	};
 	Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::RasterShader};
 
-	Memory checker_texture = Memory(texture_x * texture_y * sizeof(uint8_t));
+
+	Memory tex_memory = Memory(texture_x * texture_y * sizeof(uint8_t));
 	// Fill in checkerboard pattern to the memory.
 	for (uint16_t i = 0; i < texture_y; ++i) {
 		const uint8_t a = i % 2 ? 255 : 0;
@@ -113,9 +114,16 @@ int main(int argc, const char* argv[]) {
 		const uint8_t color[2] = {a, b};
 
 		for (uint16_t j = 0; j < texture_x; ++j) {
-			checker_texture.Data()[i*texture_x + j] = color[j%2];
+			tex_memory.Data()[i*texture_x + j] = color[j%2];
 		}
 	}
+	LAMPASSERT(checker_texture.Data()[texture_x*texture_y -1] != 255
+			|| checker_texture.Data()[texture_x*texture_y -1] != 0,
+		"Invalid value, check alignment or assignment");
+
+	Image checker_image{tex_memory, PixelFormat::B8G8R8, 0, texture_x, texture_y};
+
+
 
 
 	for (uint8_t i = 0; i < x_count; ++i) {
@@ -129,7 +137,7 @@ int main(int argc, const char* argv[]) {
 
 			model = Lamp::Mat4f::Translate(0, 0, 0) *
 					Lamp::Mat4f::Pitch(rad) *
-				    Lamp::Mat4f::Scale(4, 4, 4);
+				    Lamp::Mat4f::Scale(3, 3, 3);
 
 
 			mvp = proj * view * model;
@@ -148,9 +156,10 @@ int main(int argc, const char* argv[]) {
 			RenderCmd::BindVertexBuffer(cmd_buff, uv_buffer, 1);
 			RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);
 
-			Render::UMvp u_mvp0 = {ShaderName::RasterShader, mvp};
+			Render::UMvp u_mvp0 = {ShaderName::TexturedShader, mvp};
 			RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp0), u_mvp0);
-			RenderCmd::BindHeap(cmd_buff, checker_texture.Data());
+			RenderCmd::BindHeap(cmd_buff, tex_memory.Data());
+			RenderCmd::BindImage(cmd_buff, 0, &checker_image);
 			RenderCmd::DrawIndexed(cmd_buff, 0);
 
 			RenderCmd::EndRender(cmd_buff);

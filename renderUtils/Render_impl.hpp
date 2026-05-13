@@ -834,6 +834,7 @@ namespace RenderImpl{
         const float& _far,
         const float& _depth,
         const uint8_t* _heap,
+        const Image& _texture,
         const Image& _color_target,
         const Image& _depth_target) {
         // There are some reference about barycentric coordinate in page 479.
@@ -867,11 +868,9 @@ namespace RenderImpl{
                 double clip = w0 * _w0 + w1 * _w1 + w2 * _w2;
                 uv /= clip;
 
-                // TODO : Remove hard coding.
-                // texture is hardcoded as 4*4
-                const auto g_i = static_cast<uint8_t>(4.0f * uv.y);
-                const auto r_i = static_cast<uint8_t>(4.0f * uv.x);
-                const auto c = _heap[g_i*4 + r_i];
+                const auto g_i = static_cast<uint8_t>(_texture.Height() * uv.y);
+                const auto r_i = static_cast<uint8_t>(_texture.Width() * uv.x);
+                const auto c = _heap[g_i*_texture.Width() + r_i];
                 const uint8_t color[] = {c,c,c};
 
 
@@ -1030,9 +1029,12 @@ namespace RenderImpl{
                     //    continue;
                     //}
 
-                    FillTexture(p, v0, v1, v2, u0, u1, u2, clip_w[i0],clip_w[i1],clip_w[i2], area,
-                            view_port->near, view_port->far, stored_depth,
-                            heap, color_target, depth_target);
+                    FillTexture(p, v0, v1, v2,
+                                u0, u1, u2,
+                                clip_w[i0],clip_w[i1],clip_w[i2], area,
+                                view_port->near, view_port->far, stored_depth,
+                                heap, *_cmd_info.image_[0],
+                                color_target, depth_target);
                 }
             }
         }

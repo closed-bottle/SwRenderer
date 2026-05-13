@@ -19,6 +19,7 @@ struct RenderCmdInfo {
     const IndexBuffer** index_buffer_;
     const WindingOrder* front_face_;
     const uint8_t* heap_;
+    const Image** image_;
     const ShaderName* shader_;
     uint64_t first_index_ = 0;
 };
@@ -57,26 +58,35 @@ struct RenderCmd {
     static void BindUniform(CommandBuff& _cmd, size_t _size, const Render::ShaderFootprint& _uniform) {
         _cmd.execution_list_.push_back({CmdType::BindUniform,
             reinterpret_cast<const void*>(&_uniform)});
+        ++_cmd.uniform_max_binding;
     }
 
-    static void BindVertexBuffer(CommandBuff& _cmd, const VertexBuffer& _buffer, const uint64_t _bind) {
+    static void BindVertexBuffer(CommandBuff& _cmd, const VertexBuffer& _buffer, const uint16_t _bind) {
+        _cmd.execution_list_.push_back({CmdType::VertexBufferBind,
+    reinterpret_cast<const void*>(_bind)});
         _cmd.execution_list_.push_back({CmdType::BindVertexBuffer,
             reinterpret_cast<const void*>(&_buffer)});
-        _cmd.execution_list_.push_back({CmdType::VertexBufferBind,
-            reinterpret_cast<const void*>(_bind)});
+        ++_cmd.vertex_max_binding;
     }
 
-    static void BindIndexBuffer(CommandBuff& _cmd, const IndexBuffer& _buffer, const uint32_t _bind) {
+    static void BindIndexBuffer(CommandBuff& _cmd, const IndexBuffer& _buffer, const uint16_t _bind) {
+        _cmd.execution_list_.push_back({CmdType::IndexBufferBind,
+    reinterpret_cast<const void*>(_bind)});
         _cmd.execution_list_.push_back({CmdType::BindIndexBuffer,
     reinterpret_cast<const void*>(&_buffer)});
-        _cmd.execution_list_.push_back({CmdType::IndexBufferBind,
-            reinterpret_cast<const void*>(_bind)});
+        ++_cmd.index_max_binding;
     }
 
-    static void BindHeap(CommandBuff& _cmd, uint8_t* _heap) {
+    static void BindHeap(CommandBuff& _cmd, const uint8_t* _heap) {
         LAMPASSERT(_heap != nullptr, "Target heap cannot be nullptr");
-
         _cmd.execution_list_.push_back({CmdType::BindHeap,_heap});
+    }
+
+    static void BindImage(CommandBuff& _cmd, const uint16_t _bind, Image* _image) {
+        LAMPASSERT(_image != nullptr, "Target _image cannot be nullptr");
+        _cmd.execution_list_.push_back({CmdType::ImageBinding,reinterpret_cast<void*>(_bind)});
+        _cmd.execution_list_.push_back({CmdType::BindImage,_image});
+        ++_cmd.image_max_binding;
     }
 
     // No instancing is implemented yet.
