@@ -1,5 +1,7 @@
 ﻿#include "FileUtils.h"
 
+#include <cstring>
+
 void FileUtils::PushBytes(Lamp::Vector<uint8_t> &_target, uint8_t _stride,
                           const uint8_t *_data) {
   const auto buff = _data;
@@ -31,8 +33,9 @@ Lamp::Vector<uint8_t> FileUtils::RLE(const Image &_image) {
 
     auto while_same = [&]() {
       while (offset < n && offset < RunLength) {
-        if (memcmp(Index(_image, data, begin, offset - 1),
-                   Index(_image, data, begin, offset), _image.Stride()) != 0)
+        if (std::memcmp(Index(_image, data, begin, offset - 1),
+                        Index(_image, data, begin, offset),
+                        _image.Stride()) != 0)
           break;
         ++offset;
       }
@@ -40,8 +43,9 @@ Lamp::Vector<uint8_t> FileUtils::RLE(const Image &_image) {
 
     auto while_diff = [&]() {
       while (offset < n && offset < RunLength) {
-        if (memcmp(Index(_image, data, begin, offset - 1),
-                   Index(_image, data, begin, offset), _image.Stride()) == 0)
+        if (std::memcmp(Index(_image, data, begin, offset - 1),
+                        Index(_image, data, begin, offset),
+                        _image.Stride()) == 0)
           break;
         ++offset;
       }
