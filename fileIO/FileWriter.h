@@ -8,7 +8,7 @@
 class FileWriter {
 public:
   template <FFormat FF>
-  static void WriteImageToFile(std::string _path, const Image &_image);
+  static void WriteImageToFile(const std::string &_path, const Image &_image);
 };
 
 #include "FileWriter_impl.hpp"

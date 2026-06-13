@@ -4,6 +4,7 @@
 #include "../renderUtils/Mesh.h"
 #include "FileFormats.h"
 #include "special-lamp/lampString.h++"
+
 class FileReader {
 public:
   template <FFormat FF>
@@ -11,6 +12,7 @@ public:
                                Mesh &_out_mesh);
 };
 
+// NOLINTNEXTLINE(all)
 #include "FileReader_impl.hpp"
 
 #endif // TINYTINYRENDERER_FILEREADER_H

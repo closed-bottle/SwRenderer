@@ -32,5 +32,6 @@ public:
   static void Draw(const RenderCmdInfo &_cmd_info);
 };
 
+// NOLINTNEXTLINE
 #include "Render_impl.hpp"
 #endif // TINYTINYRENDERER_RENDER_H

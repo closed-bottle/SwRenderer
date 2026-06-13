@@ -11,16 +11,16 @@ struct Pipeline;
 struct VertexBuffer;
 
 struct RenderCmdInfo {
-  const Viewport *view_port_;
-  const RenderInfo *render_info_;
-  const Pipeline *pipeline_;
-  const Render::ShaderFootprint *uniform_;
-  const VertexBuffer **vertex_buffer_;
-  const IndexBuffer **index_buffer_;
-  const WindingOrder *front_face_;
-  const uint8_t *heap_;
-  const Image **image_;
-  const ShaderName *shader_;
+  const Viewport *view_port_{};
+  const RenderInfo *render_info_{};
+  const Pipeline *pipeline_{};
+  const Render::ShaderFootprint *uniform_{};
+  const VertexBuffer **vertex_buffer_{};
+  const IndexBuffer **index_buffer_{};
+  const WindingOrder *front_face_{};
+  const uint8_t *heap_{};
+  const Image **image_{};
+  const ShaderName *shader_{};
   uint64_t first_index_ = 0;
 };
 

@@ -4,8 +4,7 @@
 #include <cstring>
 #include <fstream>
 
-namespace {
-namespace TGA {
+namespace FileFormatDef::TGA {
 // header :
 // ID Length 1 byte
 // Color Map Type 1 byte
@@ -74,35 +73,39 @@ enum Type {
 //	top right			:      1:     1
 enum Origin { RIGHT = 0b10000, TOP = 0b100000 };
 
-bool SaveToFile(const std::string &_filename, bool is_compress,
-                const Image &_image) {
+inline bool SaveToFile(const std::string &_filename, const bool is_compress,
+                       const Image &_image) {
+
+  // NOLINTBEGIN
   uint8_t developer_area[] = {0, 0, 0, 0}; // Let dev area empty.
   uint8_t extension_area[] = {0, 0, 0, 0}; // Let ext area empty.
   uint8_t signature_string[] = {'T', 'R', 'U', 'E', 'V', 'I', 'S', 'I', 'O',
                                 'N', '-', 'X', 'F', 'I', 'L', 'E', '.', '\0'};
-
+  // NOLINTEND
   std::ofstream output_file(_filename, std::ios_base::binary);
 
   // TODO: Noticed I need to handle endianness.
-  //       Add byteswap if it is bigendian(TGA stores everything in LE).
+  // Add byteswap if it is bigendian(TGA stores everything in LE).
 
   if (!output_file.is_open()) {
     std::cerr << "Can't save file : " << _filename.c_str() << ".\n";
     output_file.close();
     return false;
   }
-  Header header;
-  memset(&header, 0, sizeof(header));
-  header.image_spec_.bits_per_pixel_ = _image.Stride() << 3;
-  header.image_spec_.width_ = _image.Width();
-  header.image_spec_.height_ = _image.Height();
-  header.image_type_ =
+  Header file_header;
+  memset(&file_header, 0, sizeof(file_header));
+  file_header.image_spec_.bits_per_pixel_ =
+      static_cast<char>(_image.Stride() << 3);
+  file_header.image_spec_.width_ = static_cast<short>(_image.Width());
+  file_header.image_spec_.height_ = static_cast<short>(_image.Height());
+  file_header.image_type_ =
       (_image.Format() == PixelFormat::D16)
           ? (is_compress ? RLE_BLACK_WHITE : UNCOMP_BLACK_WHITE)
           : (is_compress ? RLE_TRUE_COLOR : UNCOMP_TRUE_COLOR);
-  header.image_spec_.image_origin_ = 0b100000; // top-left origin
+  file_header.image_spec_.image_origin_ = 0b100000; // top-left origin
 
-  output_file.write(reinterpret_cast<char *>(&header), sizeof(header));
+  output_file.write(reinterpret_cast<char *>(&file_header),
+                    sizeof(file_header));
   if (!output_file.good()) {
     output_file.close();
     std::cerr << "Can't save tga file header.\n";
@@ -113,13 +116,10 @@ bool SaveToFile(const std::string &_filename, bool is_compress,
     const auto color_size = _image.Stride();
 
     for (uint32_t i = 0; i < _image.NPixels(); ++i) {
-      auto *itr = (static_cast<uint8_t *>(_image.Data()) + (i * color_size));
+      uint8_t *itr = _image.Data() + i * color_size;
 
-      B8G8R8 dbg = *reinterpret_cast<B8G8R8 *>(itr);
-
-      // std::cout << "Saving " << count++ << " of " << maximum << "datas." <<
-      // std::endl;
-      output_file.write(reinterpret_cast<char *>(itr), color_size);
+      output_file.write(reinterpret_cast<char *>(itr),
+                        static_cast<std::streamsize>(color_size));
       if (!output_file.good()) {
         std::cerr << "Can't save raw data\n";
         output_file.close();
@@ -161,22 +161,26 @@ bool SaveToFile(const std::string &_filename, bool is_compress,
       }
     }
 
-    output_file.write((char *)tga.data(), tga.size());
+    output_file.write(reinterpret_cast<char *>(tga.data()),
+                      static_cast<long long>(tga.size()));
   }
 
-  output_file.write((char *)developer_area, sizeof(developer_area));
+  output_file.write(reinterpret_cast<char *>(developer_area),
+                    sizeof(developer_area));
   if (!output_file.good()) {
     std::cerr << "Can't save developer area to tga file\n";
     output_file.close();
     return false;
   }
-  output_file.write((char *)extension_area, sizeof(extension_area));
+  output_file.write(reinterpret_cast<char *>(extension_area),
+                    sizeof(extension_area));
   if (!output_file.good()) {
     std::cerr << "Can't save extension area to tga file\n";
     output_file.close();
     return false;
   }
-  output_file.write((char *)signature_string, sizeof(signature_string));
+  output_file.write(reinterpret_cast<char *>(signature_string),
+                    sizeof(signature_string));
   if (!output_file.good()) {
     std::cerr << "Can't save signature string to tga file\n";
     output_file.close();
@@ -185,14 +189,14 @@ bool SaveToFile(const std::string &_filename, bool is_compress,
   output_file.close();
   return true;
 }
-} // namespace TGA
-} // namespace
+} // namespace FileFormatDef::TGA
 
 template <FFormat FF>
-void FileWriter::WriteImageToFile(std::string _path, const Image &_image) {
+void FileWriter::WriteImageToFile(const std::string &_path,
+                                  const Image &_image) {
   if (FF == FFormat::TGACompressed) {
-    TGA::SaveToFile(_path, true, _image);
+    FileFormatDef::TGA::SaveToFile(_path, true, _image);
   } else if (FF == FFormat::TGANonCompressed) {
-    TGA::SaveToFile(_path, false, _image);
+    FileFormatDef::TGA::SaveToFile(_path, false, _image);
   }
 }

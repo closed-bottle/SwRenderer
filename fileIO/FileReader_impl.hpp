@@ -1,10 +1,14 @@
-﻿#include "FileReader.h"
+﻿#ifndef FILEREADER_IMPL_HPP
+#define FILEREADER_IMPL_HPP
+// NOLINTNEXTLINE(all)
+#include "FileReader.h"
 #include <fstream>
 
 #include "special-lamp/lampMath.h++"
 
-namespace {
-bool LoadOBJ(const Lamp::String &_path, Geometry &_out_geom, Mesh &_out_mesh) {
+namespace FileLoadHelper {
+inline bool LoadOBJ(const Lamp::String &_path, Geometry &_out_geom,
+                    Mesh &_out_mesh) {
   std::ifstream input_file(_path.c_str());
   if (!input_file.is_open()) {
     std::cerr << "Failed to open file : " << _path.c_str() << '\n';
@@ -103,24 +107,24 @@ bool LoadOBJ(const Lamp::String &_path, Geometry &_out_geom, Mesh &_out_mesh) {
         std::getline(buffer_stream, stream_segment,
                      ' '); // Skip first whitespace
         while (std::getline(buffer_stream, stream_segment, ' ')) {
-          std::stringstream buffer_stream(stream_segment);
-          std::getline(buffer_stream, stream_segment, '/');
+          std::stringstream ss(stream_segment);
+          std::getline(ss, stream_segment, '/');
           uint32_t v = std::stoi(stream_segment) - 1;
           indices.push_back(v);
 
           // Post process vertices, so index for "v" matches 1:1:1 with "vn" and
           // "vt"
           // TODO : UVs are most likely 2d vectors instead of 3d.
-          std::getline(buffer_stream, stream_segment, '/');
-          uint32_t vt = 0;
+          std::getline(ss, stream_segment, '/');
           if (!stream_segment.empty()) {
+            uint32_t vt = 0;
             vt = std::stoi(stream_segment) - 1;
             uvs[v] = uvs_unsorted[vt];
           }
 
-          std::getline(buffer_stream, stream_segment, '/');
-          uint32_t vn = 0;
+          std::getline(ss, stream_segment, '/');
           if (!stream_segment.empty()) {
+            uint32_t vn = 0;
             vn = std::stoi(stream_segment) - 1;
             vnormals[v] = vnormals_unsorted[vn];
           }
@@ -188,13 +192,14 @@ bool LoadOBJ(const Lamp::String &_path, Geometry &_out_geom, Mesh &_out_mesh) {
 
   return true;
 }
-} // namespace
+} // namespace FileLoadHelper
 
 template <FFormat FF>
 bool FileReader::LoadGeometryFile(const Lamp::String &_path,
                                   Geometry &_out_geom, Mesh &_out_mesh) {
   if (FF == FFormat::OBJ)
-    return LoadOBJ(_path, _out_geom, _out_mesh);
+    return FileLoadHelper::LoadOBJ(_path, _out_geom, _out_mesh);
 
   return false;
 }
+#endif // FILEREADER_IMPL_HPP

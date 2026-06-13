@@ -1,5 +1,5 @@
-﻿#include <thread>
-
+﻿#ifndef RENDER_IMPL_HPP
+#define RENDER_IMPL_HPP
 #include "Pipeline.h"
 #include "RenderCmd.h"
 
@@ -1035,3 +1035,4 @@ inline void Render::Draw(const RenderCmdInfo &_cmd_info) {
   default:;
   }
 }
+#endif // RENDER_IMPL_HPP

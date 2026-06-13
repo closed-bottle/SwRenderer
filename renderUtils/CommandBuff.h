@@ -34,7 +34,7 @@ struct CmdBlock {
 // Ultimately, command buffers life cycle should be :
 // Initial->Recording->Executable->Pending->Invalidate->Initial.
 class CommandBuff {
-  friend class RenderCmd;
+  friend struct RenderCmd;
 
   bool is_active_ = false;
   bool is_rendering_ = false;
@@ -46,7 +46,9 @@ class CommandBuff {
   Lamp::list<CmdBlock> execution_list_;
 
 public:
-  bool IsExecutable() const { return !is_active_ && !is_rendering_; }
+  [[nodiscard]] bool IsExecutable() const {
+    return !is_active_ && !is_rendering_;
+  }
   void Execute();
   void Clear() { execution_list_.erase(0, execution_list_.size()); }
 };

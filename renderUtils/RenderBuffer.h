@@ -2,8 +2,6 @@
 #define TINYTINYRENDERER_RENDERBUFFER_H
 #include <cstdint>
 
-#include "SIMD.h"
-
 struct VertexBuffer {
   size_t stride_ = 0;
 #ifdef USE_SIMD
@@ -19,8 +17,8 @@ struct VertexBuffer {
   const uint8_t *Data() const { return (mem_.Data() + offset_); }
   uint8_t *Data() { return (mem_.Data() + offset_); }
 #else
-  constexpr const uint8_t *Data() const { return data_; }
-  constexpr uint8_t *Data() { return data_; }
+  [[nodiscard]] constexpr const uint8_t *Data() const { return data_; }
+  [[nodiscard]] uint8_t *Data() { return data_; }
 #endif
   VertexBuffer() = delete;
   VertexBuffer(const size_t _stride, void *_data, const uint64_t _vertex_count)

@@ -1,7 +1,6 @@
 ﻿#ifndef TINYTINYRENDERER_GEOMETRY_H
 #define TINYTINYRENDERER_GEOMETRY_H
 #include "Memory.h"
-#include "special-lamp/lampString.h++"
 
 struct Geometry {
   Memory vertex_ = Memory(0);

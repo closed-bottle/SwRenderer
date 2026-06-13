@@ -1,7 +1,6 @@
 ﻿#ifndef TINYTINYRENDERER_MESH_H
 #define TINYTINYRENDERER_MESH_H
 #include "AABB.h++"
-#include "special-lamp/lampMath.h++"
 #include "special-lamp/lampString.h++"
 
 struct Mesh {
