@@ -3,19 +3,11 @@
 #include "Image.h"
 #include "Render.h"
 
-
-enum class WindingOrder {
-    CCW,
-    CW,
-    Count
-};
+enum class WindingOrder { CCW, CW, Count };
 
 struct Pipeline {
-    WindingOrder front_face_;
-    ShaderName shader_;
+  WindingOrder front_face_;
+  ShaderName shader_;
 };
 
-
-
-
-#endif //TINYTINYRENDERER_PIPELINE_H
+#endif // TINYTINYRENDERER_PIPELINE_H

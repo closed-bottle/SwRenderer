@@ -6,4 +6,4 @@
 constexpr size_t SIMD_REGISTER_WIDTH = 32;
 constexpr size_t SIMD_VECTOR_FETCH_PADDING = 8;
 #endif
-#endif //SWRENDERER_SIMD_H
+#endif // SWRENDERER_SIMD_H

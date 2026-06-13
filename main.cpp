@@ -1,44 +1,37 @@
 #include "renderUtils/Memory.h"
+#include "renderUtils/SIMD.h"
+#include <chrono>
 #include <iostream>
 #include <string>
-#include <chrono>
-#include "renderUtils/SIMD.h"
 
 #include "fileIO/FileReader.h"
 #include "fileIO/FileWriter.h"
 #include "renderUtils/CommandBuff.h"
 #include "renderUtils/Image.h"
+#include "renderUtils/ImageFormat.h"
 #include "renderUtils/Pipeline.h"
 #include "renderUtils/Render.h"
 #include "renderUtils/RenderCmd.h"
 #include "renderUtils/Viewport.h"
-#include "renderUtils/ImageFormat.h"
-
 
 // Borrowed from special-lamp library.
 class TimeStamp {
-	static std::chrono::steady_clock::time_point start_;
-	static std::chrono::steady_clock::time_point end_;
+  static std::chrono::steady_clock::time_point start_;
+  static std::chrono::steady_clock::time_point end_;
 
 public:
-	static void Start() {
-		start_ = std::chrono::steady_clock::now();
-	}
+  static void Start() { start_ = std::chrono::steady_clock::now(); }
 
-	static void End() {
-		end_ = std::chrono::steady_clock::now();
-	}
+  static void End() { end_ = std::chrono::steady_clock::now(); }
 
-	static std::chrono::duration<double> Duration() {
-		return end_ - start_;
-	}
-	static TimeStamp& instance;
+  static std::chrono::duration<double> Duration() { return end_ - start_; }
+  static TimeStamp &instance;
 };
 
 std::chrono::steady_clock::time_point TimeStamp::start_;
 std::chrono::steady_clock::time_point TimeStamp::end_;
 TimeStamp gTimeStamp;
-TimeStamp& TimeStamp::instance = gTimeStamp;
+TimeStamp &TimeStamp::instance = gTimeStamp;
 
 constexpr uint16_t texture_x = 4;
 constexpr uint16_t texture_y = 4;
@@ -49,140 +42,139 @@ constexpr uint32_t y_resolution = 2048;
 constexpr uint8_t x_count = 4;
 constexpr uint8_t y_count = 4;
 */
-constexpr uint32_t x_resolution = 2*512;
-constexpr uint32_t y_resolution = 2*512;
+constexpr uint32_t x_resolution = 2 * 512;
+constexpr uint32_t y_resolution = 2 * 512;
 constexpr uint8_t x_count = 1;
 constexpr uint8_t y_count = 1;
 
 constexpr uint64_t width = x_resolution * x_count;
 constexpr uint64_t height = y_resolution * y_count;
 constexpr float near = 0.1f;
-constexpr float far  = 100;
+constexpr float far = 100;
 constexpr int channel = 3;
 
-int main(int argc, const char* argv[]) {
-	TimeStamp::Start();
+int main(int argc, const char *argv[]) {
+  TimeStamp::Start();
 
-	Geometry geom;
-	Mesh mesh;
-	FileReader::LoadGeometryFile<FFormat::OBJ>("TexPlane.obj", geom, mesh);
+  Geometry geom;
+  Mesh mesh;
+  FileReader::LoadGeometryFile<FFormat::OBJ>("TexPlane.obj", geom, mesh);
 
-	Lamp::Mat4f model = Lamp::Mat4f::Scale(5, 5, 5);
-	Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, true);
-	Lamp::Mat4f proj = Lamp::Mat4f::Perspective(3.141592/180.0f * 60.5f,
-		static_cast<float>(width) / height, near, far);
+  Lamp::Mat4f model = Lamp::Mat4f::Scale(5, 5, 5);
+  Lamp::Mat4f view = Lamp::Mat4f::LookAt({0, 0, 10}, {}, {0, 1, 0}, true);
+  Lamp::Mat4f proj = Lamp::Mat4f::Perspective(
+      3.141592 / 180.0f * 60.5f, static_cast<float>(width) / height, near, far);
 
-	auto mvp = proj * view * model;
+  auto mvp = proj * view * model;
 
+  // TODO : Do SoA for device buffers.
+  VertexBuffer pos_buffer(sizeof(Lamp::Vec3f),
+                          geom.vertex_.Data() + mesh.vertex_offset_,
+                          mesh.vertex_count_);
+  VertexBuffer uv_buffer(sizeof(Lamp::Vec2f), geom.uv_.Data() + mesh.vt_offset_,
+                         mesh.vt_count_);
+  IndexBuffer index_buffer = {geom.index_.Data() + mesh.index_offset_,
+                              mesh.index_count_};
 
-	// TODO : Do SoA for device buffers.
-	VertexBuffer pos_buffer(sizeof(Lamp::Vec3f),geom.vertex_.Data() + mesh.vertex_offset_, mesh.vertex_count_);
-	VertexBuffer uv_buffer(sizeof(Lamp::Vec2f),geom.uv_.Data() + mesh.vt_offset_, mesh.vt_count_);
-	IndexBuffer index_buffer = {geom.index_.Data() + mesh.index_offset_, mesh.index_count_};
+  Memory target_memory(16 * (width * height * channel));
+  memset(target_memory.Data(), 0, 16 * (width * height * channel));
+  Image color_att(target_memory, PixelFormat::B8G8R8, 0, width, height);
+  Image depth_att(target_memory, PixelFormat::D32, width * height * channel,
+                  width, height);
 
-	Memory target_memory(16 * (width * height * channel));
-	memset(target_memory.Data(), 0, 16 * (width * height * channel));
-	Image color_att(target_memory, PixelFormat::B8G8R8, 0, width, height);
-	Image depth_att(target_memory, PixelFormat::D32, width * height * channel, width, height);
+  B8G8R8 clear_color = {64, 64, 64};
+  D32 clear_depth(0xFFFF);
 
-	B8G8R8 clear_color = {64, 64, 64};
-	D32 clear_depth(0xFFFF);
+  AttInfo color_att_info = {color_att, LoadOp::LOAD_OP_CLEAR,
+                            StoreOp::STORE_OP_STORE,
+                            reinterpret_cast<uint8_t *>(&clear_color)};
 
-	AttInfo color_att_info = {
-		color_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,
-		reinterpret_cast<uint8_t*>(&clear_color)
-	};
+  AttInfo depth_att_info = {depth_att, LoadOp::LOAD_OP_CLEAR,
+                            StoreOp::STORE_OP_STORE,
+                            reinterpret_cast<uint8_t *>(&clear_depth)};
 
-	AttInfo depth_att_info = {
-		depth_att,LoadOp::LOAD_OP_CLEAR,StoreOp::STORE_OP_STORE,
-		reinterpret_cast<uint8_t*>(&clear_depth)
-	};
+  RenderInfo render_info = {// 1, &color_att_info, &depth_att_info
+                            1, &color_att_info, &depth_att_info};
+  Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::RasterShader};
 
-	RenderInfo render_info = {
-		//1, &color_att_info, &depth_att_info
-		1, &color_att_info, &depth_att_info
-	};
-	Pipeline render_pipeline = {WindingOrder::CCW, ShaderName::RasterShader};
+  Memory tex_memory = Memory(texture_x * texture_y * sizeof(uint8_t));
+  // Fill in checkerboard pattern to the memory.
+  for (uint16_t i = 0; i < texture_y; ++i) {
+    const uint8_t a = i % 2 ? 255 : 0;
+    const uint8_t b = !(i % 2) ? 255 : 0;
 
+    const uint8_t color[2] = {a, b};
 
-	Memory tex_memory = Memory(texture_x * texture_y * sizeof(uint8_t));
-	// Fill in checkerboard pattern to the memory.
-	for (uint16_t i = 0; i < texture_y; ++i) {
-		const uint8_t a = i % 2 ? 255 : 0;
-		const uint8_t b = !(i % 2) ? 255 : 0;
+    for (uint16_t j = 0; j < texture_x; ++j) {
+      tex_memory.Data()[i * texture_x + j] = color[j % 2];
+    }
+  }
+  LAMPASSERT(checker_texture.Data()[texture_x * texture_y - 1] != 255 ||
+                 checker_texture.Data()[texture_x * texture_y - 1] != 0,
+             "Invalid value, check alignment or assignment");
 
-		const uint8_t color[2] = {a, b};
+  Image checker_image{tex_memory, PixelFormat::B8G8R8, 0, texture_x, texture_y};
 
-		for (uint16_t j = 0; j < texture_x; ++j) {
-			tex_memory.Data()[i*texture_x + j] = color[j%2];
-		}
-	}
-	LAMPASSERT(checker_texture.Data()[texture_x*texture_y -1] != 255
-			|| checker_texture.Data()[texture_x*texture_y -1] != 0,
-		"Invalid value, check alignment or assignment");
+  for (uint8_t i = 0; i < x_count; ++i) {
+    for (uint8_t j = 0; j < y_count; ++j) {
+      Viewport viewport = {static_cast<float>(x_resolution) * i,
+                           static_cast<float>(y_resolution) * j,
+                           x_resolution,
+                           y_resolution,
+                           near,
+                           far};
 
-	Image checker_image{tex_memory, PixelFormat::B8G8R8, 0, texture_x, texture_y};
+      float rad;
+      rad = static_cast<float>(i * y_count + j) /
+            (static_cast<float>(x_count) * y_count);
+      rad *= 360 * 3.141592 / 180.0f;
 
+      model = Lamp::Mat4f::Translate(0, 0, 0) * Lamp::Mat4f::Pitch(rad) *
+              Lamp::Mat4f::Scale(3, 3, 3);
 
+      mvp = proj * view * model;
 
+      CommandBuff cmd_buff;
+      RenderCmd::BeginCmd(cmd_buff);
+      // Barrier is not implemented yet.
+      // Scissor is not implemented at this moment, and most likely will not
+      // implement.
 
-	for (uint8_t i = 0; i < x_count; ++i) {
-		for (uint8_t j = 0; j < y_count; ++j) {
-			Viewport viewport = {static_cast<float>(x_resolution) * i,
-								 static_cast<float>(y_resolution) * j, x_resolution, y_resolution, near, far};
+      RenderCmd::SetViewport(cmd_buff, viewport);
+      RenderCmd::SetRenderInfo(cmd_buff, render_info);
+      RenderCmd::BeginRender(cmd_buff);
+      RenderCmd::BindPipeline(cmd_buff, render_pipeline);
 
-			float rad;
-			rad = static_cast<float>(i * y_count + j) / (static_cast<float>(x_count) * y_count);
-			rad *= 360 * 3.141592/180.0f;
+      RenderCmd::BindVertexBuffer(cmd_buff, pos_buffer, 0);
+      RenderCmd::BindVertexBuffer(cmd_buff, uv_buffer, 1);
+      RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);
 
-			model = Lamp::Mat4f::Translate(0, 0, 0) *
-					Lamp::Mat4f::Pitch(rad) *
-				    Lamp::Mat4f::Scale(3, 3, 3);
+      Render::UMvp u_mvp0 = {ShaderName::TexturedShader, mvp};
+      RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp0), u_mvp0);
+      RenderCmd::BindHeap(cmd_buff, tex_memory.Data());
+      RenderCmd::BindImage(cmd_buff, 0, &checker_image);
+      RenderCmd::DrawIndexed(cmd_buff, 0);
 
+      RenderCmd::EndRender(cmd_buff);
+      RenderCmd::EndCmd(cmd_buff);
 
-			mvp = proj * view * model;
+      // Implement queue
+      // Submit queue
 
-			CommandBuff cmd_buff;
-			RenderCmd::BeginCmd(cmd_buff);
-			// Barrier is not implemented yet.
-			// Scissor is not implemented at this moment, and most likely will not implement.
+      // Remove templates later for runtime format specification.
+      if (cmd_buff.IsExecutable())
+        cmd_buff.Execute();
+      cmd_buff.Clear();
+    }
+  }
 
-			RenderCmd::SetViewport(cmd_buff, viewport);
-			RenderCmd::SetRenderInfo(cmd_buff, render_info);
-			RenderCmd::BeginRender(cmd_buff);
-			RenderCmd::BindPipeline(cmd_buff, render_pipeline);
+  // FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga",
+  // color_att);
+  FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
+  FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
 
-			RenderCmd::BindVertexBuffer(cmd_buff, pos_buffer, 0);
-			RenderCmd::BindVertexBuffer(cmd_buff, uv_buffer, 1);
-			RenderCmd::BindIndexBuffer(cmd_buff, index_buffer, 0);
-
-			Render::UMvp u_mvp0 = {ShaderName::TexturedShader, mvp};
-			RenderCmd::BindUniform(cmd_buff, sizeof(u_mvp0), u_mvp0);
-			RenderCmd::BindHeap(cmd_buff, tex_memory.Data());
-			RenderCmd::BindImage(cmd_buff, 0, &checker_image);
-			RenderCmd::DrawIndexed(cmd_buff, 0);
-
-			RenderCmd::EndRender(cmd_buff);
-			RenderCmd::EndCmd(cmd_buff);
-
-			// Implement queue
-			// Submit queue
-
-			// Remove templates later for runtime format specification.
-			if (cmd_buff.IsExecutable())
-				cmd_buff.Execute();
-			cmd_buff.Clear();
-		}
-	}
-
-
-
-	//FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
-	FileWriter::WriteImageToFile<FFormat::TGACompressed>("color.tga", color_att);
-	FileWriter::WriteImageToFile<FFormat::TGACompressed>("depth.tga", depth_att);
-
-	TimeStamp::End();
-	std::cout << "Total : " << TimeStamp::Duration() << std::endl;
-	//getchar();
-	return 0;
+  TimeStamp::End();
+  std::cout << "Total : " << TimeStamp::Duration() << std::endl;
+  // getchar();
+  return 0;
 }

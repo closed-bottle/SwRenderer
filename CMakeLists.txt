@@ -5,22 +5,20 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Debug.
-#set(USE_SIMD 1)
+set(USE_SIMD 0)
 
-if(NOT USE_SIMD)
+if (NOT USE_SIMD)
     set(USE_SIMD 0)
-endif()
+endif ()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     include(CMakePrintHelpers)
     add_definitions(-DDEBUG=1)
-endif()
+endif ()
 
 if (USE_SIMD EQUAL 1)
     add_definitions(-DUSE_SIMD=1)
-endif()
-
-
+endif ()
 
 
 add_subdirectory(renderUtils)
@@ -31,8 +29,8 @@ target_include_directories(SwRenderer PRIVATE thirdparty)
 target_include_directories(renderUtils PRIVATE thirdparty)
 
 
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    if(USE_SIMD)
-        target_compile_options(SwRenderer PRIVATE -mavx2 -mfma -static-libstdc++ -static-libgcc)
-    endif()
-endif()
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if (USE_SIMD)
+        target_compile_options(SwRenderer PRIVATE -march=native -m64 -mavx2 -mfma -static-libstdc++ -static-libgcc)
+    endif ()
+endif ()
